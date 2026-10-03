@@ -2,6 +2,8 @@ import { copyFrameFragment } from 'companion-camera-fragment'
 import { Request } from 'http'
 import Timer from 'timer'
 
+export const COMPLETION_PITCH = -Math.PI / 4
+
 export function companionRequest(settings, path, body, binary = false) {
   return new Promise((resolve, reject) => {
     let status = 0
@@ -87,7 +89,7 @@ export async function findFace(robot, settings, current, show) {
           await robot.motion.setTorque(true)
           if (!current()) break
           await companionRequest(settings, '/v1/diagnostics?stage=motion-start')
-          await robot.motion.setPose({ rotation: { y: yaw, p: -0.15, r: 0 } }, 0.8)
+          await robot.motion.setPose({ rotation: { y: yaw, p: COMPLETION_PITCH, r: 0 } }, 0.8)
           moved = true
         }
         lastX = face.x

@@ -60,7 +60,7 @@ Allow at least one poll interval between the start and ready commands: the robot
 
 ## Completion modules
 
-Completion begins with a gentle upward head tilt (pitch −0.15 radians, about 9°), including when no face is detected. Horizontal tracking preserves this pitch. The head returns to neutral after the announcement.
+Completion begins with a 45° upward head tilt (pitch −π/4 radians) over 1.5 seconds, including when no face is detected. The MOD waits for this movement before starting camera detection. Horizontal tracking preserves this pitch. The head returns to neutral after the announcement.
 
 - `flow-runner.js`: injected display/completion handlers, timers, duplicate suppression, generation guards and dismissal; reusable for other flows.
 - `completion.js`: explicit camera start/capture/stop, two stable detections, bounded yaw ±0.15 radians, authenticated WAV fetch/playback, and stage diagnostics.

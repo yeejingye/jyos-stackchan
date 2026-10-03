@@ -1,4 +1,4 @@
-import { announce, companionRequest, findFace } from 'companion-completion'
+import { announce, COMPLETION_PITCH, companionRequest, findFace } from 'companion-completion'
 import { FlowRunner } from 'companion-flow-runner'
 import { Emotion } from 'face-state'
 import { Request } from 'http'
@@ -76,15 +76,19 @@ export function onContextCreated(robot) {
       let active = true
       let attentionActive = true
       const valid = () => active && current()
-      // Slight upward attention pose even when face detection finds nobody.
+      // Tilt upward first, then start detecting faces once the move has settled.
       try {
         await bounded(robot.motion.setTorque(true), 2000)
         if (valid()) {
           const yaw = robot.motion.pose?.body?.rotation?.y ?? 0
           await bounded(
-            robot.motion.setPose({ rotation: { y: Math.max(-0.15, Math.min(0.15, yaw)), p: -0.15, r: 0 } }, 0.8),
+            robot.motion.setPose(
+              { rotation: { y: Math.max(-0.15, Math.min(0.15, yaw)), p: COMPLETION_PITCH, r: 0 } },
+              1.5,
+            ),
             2000,
           )
+          await new Promise((resolve) => Timer.set(resolve, 1500))
         }
       } catch (error) {
         trace(`[companion] upward attention pose failed: ${error}\n`)
@@ -109,7 +113,7 @@ export function onContextCreated(robot) {
       active = false
       if (current()) {
         try {
-          await bounded(robot.motion.setPose({ rotation: { y: 0, p: 0, r: 0 } }, 0.8), 2000)
+          await bounded(robot.motion.setPose({ rotation: { y: 0, p: 0, r: 0 } }, 1.5), 2000)
         } catch {}
         try {
           await bounded(robot.motion.setTorque(false), 2000)

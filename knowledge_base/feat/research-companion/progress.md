@@ -18,6 +18,8 @@
 
 ## Verification and publication
 
+2026-10-04 follow-up: user confirmed the slight upward move but requested 45° before face detection. Changed the shared completion pitch to −π/4 (within the configured CoreS3 0–90° upward range), slowed initial/neutral movement to 1.5 seconds, and added a settle wait before camera start. Horizontal adjustments preserve the same pitch. Physical confirmation of the 45° pose and positive detection remains pending.
+
 2026-10-04: repeat completion test reported speech-finished and cleared; user confirmed audible speech but no face-directed movement. Added a slight upward attention pose (pitch −0.15 radians, about 9°) before face search/speech, including no-face fallback, and retained that pitch during horizontal tracking. Corrected yaw lookup to the runtime's body.rotation shape. Neutral return after the announcement remains unchanged. Physical upward direction/amplitude confirmation is pending.
 
 ### Completion implementation and device verification
