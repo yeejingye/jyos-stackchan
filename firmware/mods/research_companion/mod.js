@@ -1,4 +1,4 @@
-import { announce, COMPLETION_PITCH, companionRequest, findFace } from 'companion-completion'
+import { ATTENTION_YAW_LIMIT, announce, COMPLETION_PITCH, companionRequest, findFace } from 'companion-completion'
 import { FlowRunner } from 'companion-flow-runner'
 import { Emotion } from 'face-state'
 import { Request } from 'http'
@@ -83,7 +83,13 @@ export function onContextCreated(robot) {
           const yaw = robot.motion.pose?.body?.rotation?.y ?? 0
           await bounded(
             robot.motion.setPose(
-              { rotation: { y: Math.max(-0.15, Math.min(0.15, yaw)), p: COMPLETION_PITCH, r: 0 } },
+              {
+                rotation: {
+                  y: Math.max(-ATTENTION_YAW_LIMIT, Math.min(ATTENTION_YAW_LIMIT, yaw)),
+                  p: COMPLETION_PITCH,
+                  r: 0,
+                },
+              },
               1.5,
             ),
             2000,

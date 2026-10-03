@@ -3,6 +3,7 @@ import { Request } from 'http'
 import Timer from 'timer'
 
 export const COMPLETION_PITCH = -Math.PI / 4
+export const ATTENTION_YAW_LIMIT = Math.PI / 6
 
 export function companionRequest(settings, path, body, binary = false) {
   return new Promise((resolve, reject) => {
@@ -85,7 +86,10 @@ export async function findFace(robot, settings, current, show) {
         if (lastX !== undefined && Math.abs(lastX - face.x) < 0.15) {
           await companionRequest(settings, '/v1/diagnostics?stage=face-found')
           if (Math.abs(face.x - 0.5) < 0.12) return moved
-          yaw = Math.max(-0.15, Math.min(0.15, yaw + (0.5 - face.x) * 0.3))
+          const step = Math.max(-Math.PI / 18, Math.min(Math.PI / 18, (0.5 - face.x) * 0.6))
+          const nextYaw = Math.max(-ATTENTION_YAW_LIMIT, Math.min(ATTENTION_YAW_LIMIT, yaw + step))
+          if (Math.abs(nextYaw - yaw) < 0.005) return moved
+          yaw = nextYaw
           await robot.motion.setTorque(true)
           if (!current()) break
           await companionRequest(settings, '/v1/diagnostics?stage=motion-start')
