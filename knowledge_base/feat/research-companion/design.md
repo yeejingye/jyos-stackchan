@@ -1,6 +1,6 @@
 # Design: Research companion
 
-The Wi-Fi/status foundation is implemented. Authenticated robot polls reached the Mac service. Claude integration, speech, camera capture, and face tracking below remain proposed; screen transitions and reconnect behavior still need hardware observation.
+The Wi-Fi/status foundation is implemented. Authenticated robot polls reached the Mac service, and the user observed Finding sources on-screen. Claude integration, speech, camera capture, and face tracking below remain proposed; other screen transitions and reconnect behavior still need hardware observation.
 
 ## Implemented first increment
 

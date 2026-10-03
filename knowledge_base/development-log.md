@@ -14,3 +14,4 @@ Dates use the user's Europe/Berlin timezone. This is a milestone summary, not a 
 | 2026-10-03 | Research companion requirements discussed | Claude Code research subagent, Wi-Fi, spoken completion, face locating; no implementation |
 | 2026-10-03 | Knowledge base established | Documentation only; commit/push pending at creation |
 | 2026-10-03 | Research companion implementation started | Issue #1, `codex/research-status`; Mac service + polling MOD; 8 Node tests passed; MOD installed and authenticated Wi-Fi polling observed |
+| 2026-10-03 | First research-status slice published | Commit `b74fd3c7`, draft PR #2; user observed Finding sources on robot; further milestones remain open |

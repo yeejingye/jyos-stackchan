@@ -10,10 +10,12 @@
 | 2026-10-03 | Implemented | Mac HTTP service, manual CLI, shared protocol, research MOD | Branch `codex/research-status`; private config ignored |
 | 2026-10-03 | Tested | Protocol, service, and CLI tests passed | `npm run test:research`: 8 tests; Biome checks passed |
 | 2026-10-03 | Device | MOD built, installed, digest verified; robot reached Mac over Wi-Fi | Service logged authenticated robot poll; visual transition confirmation pending |
+| 2026-10-03 | Observed | Gathering state rendered on the robot | User confirmed Finding sources display |
+| 2026-10-03 | Pushed / review | Implementation pushed and draft PR opened | `b74fd3c7`; [PR #2](https://github.com/yeejingye/jyos-stackchan/pull/2), base `jyos-stackchan`; not merged |
 
 ## Verification and publication
 
-Increment A is implemented and has the evidence above. No Claude configuration changes, speech, motor gestures, or face tracking were made. Synthetic gathering/comparing events were sent; these are not actual research results. Service stop/restart, screen behavior, and real Claude completion semantics remain unverified.
+Increment A is implemented and has the evidence above. No Claude configuration changes, speech, motor gestures, or face tracking were made. Synthetic gathering/comparing events were sent; these are not actual research results. Gathering display is user-verified; comparing/ready transitions, service stop/restart, and real Claude completion semantics remain unverified. The Mac service is running for manual verification in the current development session.
 
 Commands: `npm run test:research`, `npm exec -- biome check mods/research_companion tools/research-companion`, `npm run mod:build -- mods/research_companion/manifest.json`, and configured MOD installation through `npm run mod`. See [usage guide](../../../firmware/mods/research_companion/README.md).
 

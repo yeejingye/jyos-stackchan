@@ -3,7 +3,7 @@
 | Feature | Lifecycle | Verification | Publication |
 | --- | --- | --- | --- |
 | [JYOS hello](jyos-hello/README.md) | Complete | Greeting and small movement observed | Pushed: `2751159e`; committed directly, no PR |
-| [Research companion](research-companion/README.md) | In progress: Wi-Fi/status foundation | 8 Node tests, MOD build/flash, authenticated Wi-Fi poll; screen/reconnect pending | `codex/research-status`; issue #1; initial PR pending |
+| [Research companion](research-companion/README.md) | In progress: Wi-Fi/status foundation | 8 Node tests, MOD build/flash, authenticated Wi-Fi poll, Finding sources screen; further checks pending | `codex/research-status`; [issue #1](https://github.com/yeejingye/jyos-stackchan/issues/1); [draft PR #2](https://github.com/yeejingye/jyos-stackchan/pull/2) |
 
 ## Feature record format
 

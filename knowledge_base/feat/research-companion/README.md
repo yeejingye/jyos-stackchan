@@ -3,10 +3,10 @@
 | Field | Value |
 | --- | --- |
 | Lifecycle | In progress: Wi-Fi/status foundation implemented |
-| Verification | 8 Node tests passed; MOD built/installed; authenticated robot Wi-Fi polling observed; screen/reconnect checks pending |
-| Publication | Initial feature PR pending |
+| Verification | 8 Node tests passed; MOD built/installed; authenticated Wi-Fi polling and Finding sources display observed; remaining screen/reconnect checks pending |
+| Publication | Pushed: `b74fd3c7`; draft PR #2 |
 | Branch | `codex/research-status` |
-| PR / base | None / `jyos-stackchan` |
+| PR / base | [#2](https://github.com/yeejingye/jyos-stackchan/pull/2) (draft, unmerged) / `jyos-stackchan` |
 | Release impact | Expected minor; reassess final implementation |
 
 Tracking issue: [#1](https://github.com/yeejingye/jyos-stackchan/issues/1). First increment usage: [research MOD guide](../../../firmware/mods/research_companion/README.md).
