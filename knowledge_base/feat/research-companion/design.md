@@ -38,6 +38,10 @@ flowchart LR
 
 ## State and event contract
 
+### Status card
+
+The MOD now uses a 304-pixel-wide bottom card instead of the small speech balloon. Dark slate background, 24px Open Sans phase heading, 16px supporting text, and cyan/green/error accents provide a clear hierarchy. Four stage markers represent gathering, comparing, drafting, and ready; they are not percentage estimates. Long custom text is shortened to fit, while the Mac snapshot retains the full text. The face remains behind the card; overlap/readability require on-device visual confirmation.
+
 Proposed event fields: task ID, sequence/event ID, timestamp, phase, optional concise status, and result-note reference. Phases: confirming, gathering, comparing, drafting, ready, needs-input, failed. Connection state is tracked separately.
 
 Use explicit research milestones where possible. Tool hooks can supplement searching/fetching indications but cannot determine every semantic phase. Claude `Stop` means a response ended, and `SubagentStop` means a subagent stopped; neither alone proves the research succeeded. Correlate the intended agent with the expected saved ResearchNote and agreed validation.

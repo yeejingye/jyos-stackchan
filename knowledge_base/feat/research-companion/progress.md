@@ -12,10 +12,11 @@
 | 2026-10-03 | Device | MOD built, installed, digest verified; robot reached Mac over Wi-Fi | Service logged authenticated robot poll; visual transition confirmation pending |
 | 2026-10-03 | Observed | Gathering state rendered on the robot | User confirmed Finding sources display |
 | 2026-10-03 | Pushed / review | Implementation pushed and draft PR opened | `b74fd3c7`; [PR #2](https://github.com/yeejingye/jyos-stackchan/pull/2), base `jyos-stackchan`; not merged |
+| 2026-10-03 | Observed / UI | Comparing evidence confirmed; user requested larger, modern text | Replaced balloon with wide dark card, 24px heading, 16px detail, stage markers; formatted, compiled, installed, digest verified; visual review pending |
 
 ## Verification and publication
 
-Increment A is implemented and has the evidence above. No Claude configuration changes, speech, motor gestures, or face tracking were made. Synthetic gathering/comparing events were sent; these are not actual research results. Gathering display is user-verified; comparing/ready transitions, service stop/restart, and real Claude completion semantics remain unverified. The Mac service is running for manual verification in the current development session.
+Increment A is implemented and has the evidence above. No Claude configuration changes, speech, motor gestures, or face tracking were made. Synthetic gathering/comparing events were sent; these are not actual research results. Gathering and comparing displays were user-verified before the card redesign; redesigned card, ready transition, service stop/restart, and real Claude completion semantics remain unverified. The Mac service is running for manual verification in the current development session.
 
 Commands: `npm run test:research`, `npm exec -- biome check mods/research_companion tools/research-companion`, `npm run mod:build -- mods/research_companion/manifest.json`, and configured MOD installation through `npm run mod`. See [usage guide](../../../firmware/mods/research_companion/README.md).
 

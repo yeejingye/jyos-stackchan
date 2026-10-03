@@ -2,6 +2,7 @@ import { Emotion } from 'face-state'
 import { Request } from 'http'
 import config from 'mod/config'
 import { PRESENTATION, SnapshotCursor, validateSnapshot } from 'research-status'
+import { createStatusCard } from 'research-status-card'
 import Timer from 'timer'
 
 const POLL_MS = 2000
@@ -11,24 +12,22 @@ export function onContextCreated(robot) {
   const settings = config.researchCompanion ?? {}
   const cursor = new SnapshotCursor()
   let phase = 'idle'
-  let label = ''
+  const card = createStatusCard()
+  robot.ui.addEffect(card.content, 'research-status')
   let connected = false
   let activeRequest
   let watchdog
   let pulse = false
 
-  const show = (text, emotion) => {
+  const show = (text, emotion, displayPhase = 'setup') => {
     robot.face.setEmotion(emotion)
-    if (text !== label) {
-      robot.ui.showBalloon(text, { right: 10, top: 10, width: 150 })
-      label = text
-    }
+    card.update(text, displayPhase)
   }
   const offline = (text = 'Mac disconnected') => {
     connected = false
     robot.face.setEyeOpen('left', 1)
     robot.face.setEyeOpen('right', 1)
-    show(text, Emotion.SAD)
+    show(text, Emotion.SAD, 'offline')
   }
 
   if (
@@ -76,7 +75,7 @@ export function onContextCreated(robot) {
             if (changed || !connected) {
               phase = snapshot.phase
               const presentation = PRESENTATION[phase]
-              show(snapshot.text || presentation.text, Emotion[presentation.emotion])
+              show(snapshot.text || presentation.text, Emotion[presentation.emotion], phase)
             }
             connected = true
           } catch {
@@ -99,7 +98,7 @@ export function onContextCreated(robot) {
     }
   }
 
-  show('Connecting to Mac', Emotion.NEUTRAL)
+  show('Connecting to Mac', Emotion.NEUTRAL, 'connecting')
   void robot.connectivity.network.ready
     .then((result) => {
       if (result.status !== 'connected') {

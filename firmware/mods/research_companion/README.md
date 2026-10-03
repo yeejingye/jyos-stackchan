@@ -4,6 +4,8 @@ Tracks one research task on a complete M5StackChan CoreS3. This first increment 
 
 The robot polls an authenticated Mac HTTP service every two seconds. HTTP requests time out after three seconds. A failed poll shows a disconnected status; successful polls restore the latest state without reapplying duplicate revisions.
 
+Status appears in a wide dark bottom card: 24px phase heading, 16px detail, and colored stage markers. Long custom text is shortened on-screen; the full text remains in the service snapshot. Markers show actual phases, not estimated completion percentages.
+
 ## Configure and run
 
 From `firmware/`, copy the example config:
