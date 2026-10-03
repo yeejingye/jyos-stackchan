@@ -14,6 +14,7 @@ const TITLES = {
   connecting: 'Connecting',
   offline: 'Connection lost',
   setup: 'Let’s connect',
+  finding: 'Looking for you',
 }
 
 export function createStatusCard() {

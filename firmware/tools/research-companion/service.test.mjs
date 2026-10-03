@@ -4,8 +4,8 @@ import { createCompanionServer } from './service.mjs'
 
 const token = 'test-token-not-for-production'
 
-async function fixture(t) {
-  const server = createCompanionServer({ token, serviceId: 'test-service' })
+async function fixture(t, options = {}) {
+  const server = createCompanionServer({ token, serviceId: 'test-service', ...options })
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
   t.after(
     () =>
@@ -38,6 +38,26 @@ test('HTTP service authenticates reads and writes and acknowledges duplicate com
   const state = await (await request('/v1/state')).json()
   assert.equal(state.phase, 'ready')
   assert.equal(state.revision, 2)
+})
+
+test('completion endpoints authenticate and bound in-memory face frames', async (t) => {
+  const frames = []
+  const request = await fixture(t, {
+    speech: Buffer.from('wav-fixture'),
+    detectFace: async (frame) => {
+      frames.push(frame.length)
+      return { face: { x: 0.4, confidence: 0.9 } }
+    },
+  })
+  assert.equal((await request('/v1/completion.wav', { headers: { Authorization: 'wrong' } })).status, 401)
+  assert.equal(await (await request('/v1/completion.wav')).text(), 'wav-fixture')
+  const post = (body) =>
+    request('/v1/face', { method: 'POST', headers: { 'Content-Type': 'application/octet-stream' }, body })
+  assert.equal((await post(Buffer.alloc(2))).status, 400)
+  assert.equal((await post(Buffer.alloc(60000))).status, 413)
+  assert.equal((await (await post(Buffer.alloc(176 * 144 * 2))).json()).face.x, 0.4)
+  assert.deepEqual(frames, [176 * 144 * 2])
+  assert.equal((await (await request('/v1/state')).json()).phase, 'idle')
 })
 
 test('malformed, oversized, unsupported requests do not mutate service state', async (t) => {

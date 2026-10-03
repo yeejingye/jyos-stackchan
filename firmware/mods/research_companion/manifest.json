@@ -3,7 +3,10 @@
   "modules": {
     "mod": "./mod",
     "research-status": "./research-status",
-    "research-status-card": "./status-card"
+    "research-status-card": "./status-card",
+    "companion-flow-runner": "./flow-runner",
+    "companion-completion": "./completion",
+    "companion-camera-fragment": "./camera-fragment"
   },
   "config": {
     "researchCompanion": {

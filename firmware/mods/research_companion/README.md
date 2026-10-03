@@ -1,8 +1,8 @@
-# Research companion: Wi-Fi status foundation
+# Research companion
 
-Tracks one research task on a complete M5StackChan CoreS3. This first increment displays studying/progress/ready/error states. It does **not** yet connect Claude hooks, validate ResearchNotes, speak, move the head, or locate faces.
+Tracks one research task on a complete M5StackChan CoreS3. On a newly observed task completing, the MOD searches for a face for up to eight seconds, makes bounded horizontal adjustments, plays a spoken completion cue, and clears the ready card after fifteen seconds. The camera and speech run locally on your Mac and robot. Automatic Claude hooks remain a separate pending increment; the live research tests use a temporary external runner.
 
-The robot polls an authenticated Mac HTTP service every two seconds. HTTP requests time out after three seconds. A failed poll shows a disconnected status; successful polls restore the latest state without reapplying duplicate revisions.
+The robot polls an authenticated Mac HTTP service every two seconds. HTTP requests time out after three seconds. Idle hides the research card. A failed poll during active work shows a disconnected status; completion expiry runs locally even if Wi-Fi drops. The service task may remain ready after its card is cleared.
 
 Status appears in a wide dark bottom card: 24px phase heading, 16px detail, and colored stage markers. Long custom text is shortened on-screen; the full text remains in the service snapshot. Markers show actual phases, not estimated completion percentages.
 
@@ -25,8 +25,11 @@ The host firmware must already be connected to the same Wi-Fi. Do not put your W
 Start the Mac service in one terminal:
 
 ```sh
+npm run research:prepare
 npm run research:serve -- --config mods/research_companion/manifest.local.json --host 0.0.0.0
 ```
+
+Preparation requires macOS Command Line Tools. It compiles an Apple Vision face detector and uses macOS Samantha speech to generate “JY, your research note is ready for review.” Generated files stay under ignored `dist/companion/`; regenerate them after `npm run clean`. Restart the service after preparation to load the speech file.
 
 Binding to `0.0.0.0` makes the service reachable on the LAN; omitting `--host` limits it to localhost. Use this HTTP prototype on a trusted LAN, without port forwarding: the shared token and messages are not encrypted. It transports brief status only, not note contents. Allow incoming connections if macOS prompts. Keep the Mac awake during testing.
 
@@ -38,7 +41,7 @@ source ~/.espressif/python_env/idf6.1_py3.14_env/bin/activate
 npm run mod -- mods/research_companion/manifest.local.json --port /dev/cu.usbmodem101
 ```
 
-This replaces the current MOD and reboots. No host rebuild is needed. The service logs the first authenticated robot poll; the idle screen should read Ready to research.
+This replaces the current MOD and reboots. No host rebuild is needed. The service logs the first authenticated robot poll; idle should show the normal face with no card.
 
 ## Send a synthetic research sequence
 
@@ -52,6 +55,18 @@ npm run research:event -- --config mods/research_companion/manifest.local.json -
 ```
 
 `ready` here is a manual test event, not proof that Claude research finished. The later Claude adapter must confirm a saved/checked ResearchNote before sending it. Use a new task ID for another demo after ready/failed; terminal tasks cannot resume.
+
+Allow at least one poll interval between the start and ready commands: the robot deliberately ignores completion for a task it never saw active. Keep a face visible to its front camera. The largest detected face is the target; this detects location, not personal identity. The first hardware test rebooted during completion; stage diagnostics and an explicit camera-start correction were added. Camera orientation, motion direction, speech and clearing still need successful on-device confirmation before describing the sequence as hardware validated.
+
+## Completion modules
+
+- `flow-runner.js`: injected display/completion handlers, timers, duplicate suppression, generation guards and dismissal; reusable for other flows.
+- `completion.js`: explicit camera start/capture/stop, two stable detections, bounded yaw ±0.15 radians, authenticated WAV fetch/playback, and stage diagnostics.
+- Mac `completion.mjs` / `detect-face.swift`: in-memory RGB565 detection and canonical 8kHz mono PCM speech preparation. No frames are saved or sent to an external service.
+
+No-face and speech errors fall back to visual ready and automatic expiry. Face attention has an eleven-second outer deadline; speech has a twelve-second outer deadline. Audio is a finite three-second clip. Completion IDs are consumed before physical actions and the last sixteen IDs are stored in robot preferences, preventing immediate reconnect/reboot replay. This provides at-most-once attempts: reboot during an announcement does not retry it. A completed task received without first observing it active is ignored. This is bounded replay protection, not a durable general queue.
+
+The sequence returns the head to neutral and releases torque; it does not infer or restore an unknown previous torque state. Horizontal direction/mirroring and alignment range require device calibration. Set `faceTracking: false` in local researchCompanion config only to isolate speech/clearing during diagnostics.
 
 ```sh
 npm run research:state -- --config mods/research_companion/manifest.local.json
@@ -72,6 +87,9 @@ npm run mod -- mods/jyos_hello/manifest.json --port /dev/cu.usbmodem101
 - `GET /v1/state`: latest snapshot, including service ID and revision.
 - `POST /v1/events`: event JSON; requires `Content-Type: application/json`.
 - Both require `Authorization: Bearer <token>`.
+- `POST /v1/face`: fixed 176×144 RGB565 little-endian frame (`application/octet-stream`), maximum 50,688 bytes; one detection request at a time.
+- `GET /v1/completion.wav`: prepared completion clip, also authenticated.
+- `GET /v1/diagnostics`: most recent robot-reported completion stage; stage-only messages contain no images. The service prints stages during device checks.
 - Event: `{ "version": 1, "taskId": "demo-1", "sequence": 1, "phase": "gathering" }`.
 - Optional `text`: at most 80 characters. Default labels fit the screen; longer custom labels may wrap.
 - Phases: confirming, gathering, comparing, drafting, needs-input, ready, failed. Service starts idle.

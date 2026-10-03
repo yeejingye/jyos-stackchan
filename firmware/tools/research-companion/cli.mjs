@@ -1,5 +1,6 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { parseArgs } from 'node:util'
+import { detectFace, speechPath } from './completion.mjs'
 import { createCompanionServer } from './service.mjs'
 
 const { values, positionals } = parseArgs({
@@ -26,6 +27,8 @@ try {
     let robotSeen = false
     const server = createCompanionServer({
       token,
+      detectFace,
+      speech: existsSync(speechPath) ? readFileSync(speechPath) : undefined,
       onRobotPoll: () => {
         if (!robotSeen) console.log('Robot connected: authenticated Wi-Fi status poll received')
         robotSeen = true
