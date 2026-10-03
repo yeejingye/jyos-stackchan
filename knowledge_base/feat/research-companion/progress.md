@@ -18,6 +18,8 @@
 
 ## Verification and publication
 
+2026-10-04 corrected-direction retest: user confirmed “It turned toward me.” Service reported stable face detections and movement commands, then speech-finished and cleared. Together with the earlier user confirmations of the 45° tilt and audible speech, this validates the physical direction on this unit. The detector still locates a face rather than recognizing the owner's identity; long-run robustness remains outside this short completion test.
+
 2026-10-04 alignment feedback: user observed movement away from them with the widened range. Reversed horizontal correction for the actual CoreS3 camera/servo pairing while retaining the 45° pitch, ±30° yaw limit and 10° step cap. Correct direction remains pending physical retest. Current face detection runs through macOS Vision VNDetectFaceRectanglesRequest; it is distinct from M5Stack factory firmware.
 
 2026-10-04 45° test: user confirmed the upward angle looked right, but did not observe successful alignment. Service diagnostics reported three face-found/motion-start pairs, followed by speech-finished and cleared. This establishes detector responses and motor requests, not physical alignment or identity. Widened completion yaw from ±0.15 radians (~9°) to ±30°, with steps capped at 10°, to address the limited horizontal reach. Direction and alignment still need user confirmation.
