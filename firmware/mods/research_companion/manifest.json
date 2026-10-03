@@ -1,0 +1,14 @@
+{
+  "include": ["$(MODDABLE)/examples/manifest_mod.json"],
+  "modules": {
+    "mod": "./mod",
+    "research-status": "./research-status"
+  },
+  "config": {
+    "researchCompanion": {
+      "host": "",
+      "port": 8787,
+      "token": ""
+    }
+  }
+}

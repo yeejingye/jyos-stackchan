@@ -1,0 +1,10 @@
+{
+  "include": ["./manifest.json"],
+  "config": {
+    "researchCompanion": {
+      "host": "YOUR_MAC_LAN_IP",
+      "port": 8787,
+      "token": "YOUR_SHARED_TOKEN"
+    }
+  }
+}
