@@ -76,6 +76,19 @@ export function onContextCreated(robot) {
       let active = true
       let attentionActive = true
       const valid = () => active && current()
+      // Slight upward attention pose even when face detection finds nobody.
+      try {
+        await bounded(robot.motion.setTorque(true), 2000)
+        if (valid()) {
+          const yaw = robot.motion.pose?.body?.rotation?.y ?? 0
+          await bounded(
+            robot.motion.setPose({ rotation: { y: Math.max(-0.15, Math.min(0.15, yaw)), p: -0.15, r: 0 } }, 0.8),
+            2000,
+          )
+        }
+      } catch (error) {
+        trace(`[companion] upward attention pose failed: ${error}\n`)
+      }
       try {
         if (settings.faceTracking !== false)
           await bounded(
@@ -154,11 +167,9 @@ export function onContextCreated(robot) {
               throw new Error('Stale snapshot')
             }
             cursor.accept(snapshot)
-            {
-              phase = snapshot.phase
-              if (!['idle', 'ready', 'failed'].includes(phase)) observedTask = snapshot.taskId
-              runner.apply(snapshot)
-            }
+            phase = snapshot.phase
+            if (!['idle', 'ready', 'failed'].includes(phase)) observedTask = snapshot.taskId
+            runner.apply(snapshot)
             connected = true
           } catch {
             offline(status === 401 ? 'Check shared token' : 'Mac disconnected')

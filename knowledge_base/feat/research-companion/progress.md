@@ -18,6 +18,8 @@
 
 ## Verification and publication
 
+2026-10-04: repeat completion test reported speech-finished and cleared; user confirmed audible speech but no face-directed movement. Added a slight upward attention pose (pitch −0.15 radians, about 9°) before face search/speech, including no-face fallback, and retained that pitch during horizontal tracking. Corrected yaw lookup to the runtime's body.rotation shape. Neutral return after the announcement remains unchanged. Physical upward direction/amplitude confirmation is pending.
+
 ### Completion implementation and device verification
 
 2026-10-03: implemented reusable FlowRunner, camera attention, fragment copying, local Apple Vision helper, local macOS speech preparation, authenticated face/WAV endpoints, stage diagnostics, and 15-second automatic clearing. Tests cover lifecycle/deduplication, ownership transfer, fallback, buffer fragment copying, PCM conversion and HTTP boundaries; 15 tests pass. Biome checks pass. MOD builds and USB installs were digest verified.

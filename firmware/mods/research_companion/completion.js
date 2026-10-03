@@ -59,7 +59,7 @@ export function companionRequest(settings, path, body, binary = false) {
 export async function findFace(robot, settings, current, show) {
   const deadline = Date.now() + 8000
   let lastX
-  let yaw = robot.motion.pose?.rotation?.y ?? 0
+  let yaw = robot.motion.pose?.body?.rotation?.y ?? 0
   let moved = false
   try {
     await companionRequest(settings, '/v1/diagnostics?stage=face-start')
@@ -87,7 +87,7 @@ export async function findFace(robot, settings, current, show) {
           await robot.motion.setTorque(true)
           if (!current()) break
           await companionRequest(settings, '/v1/diagnostics?stage=motion-start')
-          await robot.motion.setPose({ rotation: { y: yaw, p: 0, r: 0 } }, 0.8)
+          await robot.motion.setPose({ rotation: { y: yaw, p: -0.15, r: 0 } }, 0.8)
           moved = true
         }
         lastX = face.x
