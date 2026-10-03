@@ -18,6 +18,8 @@
 
 ## Verification and publication
 
+2026-10-04 alignment feedback: user observed movement away from them with the widened range. Reversed horizontal correction for the actual CoreS3 camera/servo pairing while retaining the 45° pitch, ±30° yaw limit and 10° step cap. Correct direction remains pending physical retest. Current face detection runs through macOS Vision VNDetectFaceRectanglesRequest; it is distinct from M5Stack factory firmware.
+
 2026-10-04 45° test: user confirmed the upward angle looked right, but did not observe successful alignment. Service diagnostics reported three face-found/motion-start pairs, followed by speech-finished and cleared. This establishes detector responses and motor requests, not physical alignment or identity. Widened completion yaw from ±0.15 radians (~9°) to ±30°, with steps capped at 10°, to address the limited horizontal reach. Direction and alignment still need user confirmation.
 
 2026-10-04 follow-up: user confirmed the slight upward move but requested 45° before face detection. Changed the shared completion pitch to −π/4 (within the configured CoreS3 0–90° upward range), slowed initial/neutral movement to 1.5 seconds, and added a settle wait before camera start. Horizontal adjustments preserve the same pitch. Physical confirmation of the 45° pose and positive detection remains pending.

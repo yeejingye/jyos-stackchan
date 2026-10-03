@@ -86,7 +86,8 @@ export async function findFace(robot, settings, current, show) {
         if (lastX !== undefined && Math.abs(lastX - face.x) < 0.15) {
           await companionRequest(settings, '/v1/diagnostics?stage=face-found')
           if (Math.abs(face.x - 0.5) < 0.12) return moved
-          const step = Math.max(-Math.PI / 18, Math.min(Math.PI / 18, (0.5 - face.x) * 0.6))
+          // This CoreS3 camera/servo pairing needs positive yaw for a face to image-right.
+          const step = Math.max(-Math.PI / 18, Math.min(Math.PI / 18, (face.x - 0.5) * 0.6))
           const nextYaw = Math.max(-ATTENTION_YAW_LIMIT, Math.min(ATTENTION_YAW_LIMIT, yaw + step))
           if (Math.abs(nextYaw - yaw) < 0.005) return moved
           yaw = nextYaw

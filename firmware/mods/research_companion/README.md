@@ -64,6 +64,8 @@ Completion begins with a 45° upward head tilt (pitch −π/4 radians) over 1.5 
 
 Horizontal tracking is now limited to ±30°, with adjustments capped at 10° per step. Positive detections were reported with the 45° tilt, but physical alignment and horizontal direction still need confirmation.
 
+Current detector: Apple's macOS Vision VNDetectFaceRectanglesRequest, running on the Mac; its internal model name is not exposed by this API. M5Stack's [official UIFlow StackChan face-tracking example](https://uiflow-micropython.readthedocs.io/en/master/controllers/stackchan.html#face-tracking) instead uses the on-device dl.model.HUMAN_FACE_DETECT detector with a 45° neutral tilt. This does not confirm the detector in a particular factory firmware version. That UIFlow module is not available to a Moddable MOD without a native integration. The factory and this firmware are separate implementations.
+
 - `flow-runner.js`: injected display/completion handlers, timers, duplicate suppression, generation guards and dismissal; reusable for other flows.
 - `completion.js`: explicit camera start/capture/stop, two stable detections, bounded yaw ±0.15 radians, authenticated WAV fetch/playback, and stage diagnostics.
 - Mac `completion.mjs` / `detect-face.swift`: in-memory RGB565 detection and canonical 8kHz mono PCM speech preparation. No frames are saved or sent to an external service.
