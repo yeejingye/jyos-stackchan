@@ -1,5 +1,7 @@
+import Resource from 'Resource'
 import { copyFrameFragment } from 'companion-camera-fragment'
 import { Request } from 'http'
+import Modules from 'modules'
 import Timer from 'timer'
 
 export const COMPLETION_PITCH = -Math.PI / 4
@@ -59,13 +61,21 @@ export function companionRequest(settings, path, body, binary = false) {
   })
 }
 
+function reportStage(settings, stage) {
+  companionRequest(settings, `/v1/diagnostics?stage=${stage}`).catch(() => {})
+}
+
 export async function findFace(robot, settings, current, show) {
   const deadline = Date.now() + 8000
   let lastX
   let yaw = robot.motion.pose?.body?.rotation?.y ?? 0
   let moved = false
+  let detector
   try {
-    await companionRequest(settings, '/v1/diagnostics?stage=face-start')
+    if (!Modules.has('local-face-detector')) throw new Error('Experimental local detector host required')
+    const FaceDetector = Modules.importNow('local-face-detector')
+    detector = new FaceDetector()
+    reportStage(settings, 'face-start')
     show('Looking for you...', 'finding')
     await robot.camera.start({ width: 176, height: 144, imageType: 'rgb565le' })
     while (current() && Date.now() < deadline) {
@@ -74,8 +84,9 @@ export async function findFace(robot, settings, current, show) {
       try {
         frame = await robot.camera.capture({ width: 176, height: 144, imageType: 'rgb565le' })
         if (!frame || !current()) break
-        await companionRequest(settings, '/v1/diagnostics?stage=frame-captured')
-        detection = JSON.parse(await companionRequest(settings, '/v1/face', frame.buffer))
+        reportStage(settings, 'frame-captured')
+        detection = { face: detector.detect(frame.buffer, 176, 144) }
+        trace(`[companion] local face=${!!detection.face} inferenceMs=${detector.inferenceMs}\n`)
       } finally {
         frame?.close?.()
       }
@@ -84,7 +95,7 @@ export async function findFace(robot, settings, current, show) {
       if (face && Number.isFinite(face.x) && face.x >= 0 && face.x <= 1 && face.confidence >= 0.5) {
         // Require two consistent detections, then move only horizontally.
         if (lastX !== undefined && Math.abs(lastX - face.x) < 0.15) {
-          await companionRequest(settings, '/v1/diagnostics?stage=face-found')
+          reportStage(settings, 'face-found')
           if (Math.abs(face.x - 0.5) < 0.12) return moved
           // This CoreS3 camera/servo pairing needs positive yaw for a face to image-right.
           const step = Math.max(-Math.PI / 18, Math.min(Math.PI / 18, (face.x - 0.5) * 0.6))
@@ -93,7 +104,7 @@ export async function findFace(robot, settings, current, show) {
           yaw = nextYaw
           await robot.motion.setTorque(true)
           if (!current()) break
-          await companionRequest(settings, '/v1/diagnostics?stage=motion-start')
+          reportStage(settings, 'motion-start')
           await robot.motion.setPose({ rotation: { y: yaw, p: COMPLETION_PITCH, r: 0 } }, 0.8)
           moved = true
         }
@@ -104,6 +115,7 @@ export async function findFace(robot, settings, current, show) {
   } catch (error) {
     trace(`[companion] face search unavailable: ${error}\n`)
   } finally {
+    detector?.close()
     await robot.camera.stop()
   }
   return moved
@@ -113,14 +125,15 @@ export async function announce(robot, settings, current, show) {
   if (!current()) return
   show('Your research note is ready', 'ready')
   try {
-    await companionRequest(settings, '/v1/diagnostics?stage=speech-fetch')
-    const wav = await companionRequest(settings, '/v1/completion.wav', undefined, true)
+    const wav = new Uint8Array(new Resource('research-ready.wav')).slice().buffer
     if (!current()) return
     if (wav.byteLength > 100044) throw new Error('Speech too large')
-    await companionRequest(settings, '/v1/diagnostics?stage=speech-start')
+    reportStage(settings, 'speech-start')
     if (!(await robot.audio.playAudio(wav))) throw new Error('Playback failed')
-    await companionRequest(settings, '/v1/diagnostics?stage=speech-finished')
+    reportStage(settings, 'speech-finished')
+    return true
   } catch (error) {
     trace(`[companion] speech unavailable: ${error}\n`)
+    return false
   }
 }

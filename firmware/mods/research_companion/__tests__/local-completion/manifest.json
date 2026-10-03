@@ -1,0 +1,9 @@
+{
+  "include": [
+    "$(MODDABLE)/examples/manifest_mod.json",
+    "../../manifest.components.json"
+  ],
+  "modules": {
+    "mod": "./mod"
+  }
+}

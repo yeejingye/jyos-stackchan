@@ -58,3 +58,8 @@ Commands: `npm run test:research`, `npm exec -- biome check mods/research_compan
 2026-10-03 requirement update: [modular flow lifecycle](flow-lifecycle.md) specifies research-only triggering, face-directed completion, bounded announcement and automatic return to idle. It separates trigger/flow definitions from shared display, attention, speech and cleanup modules. These new requirements are documented, not yet implemented; the real-test result above remains valid for the status foundation only.
 
 Verify disconnect/reconnect on hardware. Then turn the temporary test into increment B's reusable research-specific event adapter, including stricter saved-note validation and tool failure handling. Improve the card transparency after this functional test. Increment C must verify speech playback before claiming spoken completion. Tracking issue remains open across these increments.
+
+
+## 2026-10-04 — on-device completion experiment
+
+Preserved and pushed the working Mac-assisted checkpoint `4c5f047e` before creating `codex/on-device-completion`. Added an opt-in CoreS3 ESP-DL native face detector and bundled completion audio. Host build/deploy passed; offline device run reported audio PASS, hardware cleanup and card clearing. Repeated local inference took 106–129 ms after the first call, but no real face was detected, so physical alignment remains pending. The normal research MOD was restored. Tests: 405 unit, 16 companion, 4 dependency checks. See [experiment details](on-device-experiment.md).

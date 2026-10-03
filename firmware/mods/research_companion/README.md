@@ -1,6 +1,6 @@
 # Research companion
 
-Tracks one research task on a complete M5StackChan CoreS3. On a newly observed task completing, the MOD searches for a face for up to eight seconds, makes bounded horizontal adjustments, plays a spoken completion cue, and clears the ready card after fifteen seconds. The camera and speech run locally on your Mac and robot. Automatic Claude hooks remain a separate pending increment; the live research tests use a temporary external runner.
+Tracks one research task on a complete M5StackChan CoreS3. On a newly observed task completing, the MOD searches for a face for up to eight seconds, makes bounded horizontal adjustments, plays a spoken completion cue, and clears the ready card after fifteen seconds. On this experimental branch, face inference and playback run on the robot. The fixed completion sentence is a bundled WAV, not arbitrary local text-to-speech. Deploy the experimental local-completion host before installing this MOD. Automatic Claude hooks remain a separate pending increment; the live research tests use a temporary external runner.
 
 The robot polls an authenticated Mac HTTP service every two seconds. HTTP requests time out after three seconds. Idle hides the research card. A failed poll during active work shows a disconnected status; completion expiry runs locally even if Wi-Fi drops. The service task may remain ready after its card is cleared.
 
@@ -25,23 +25,24 @@ The host firmware must already be connected to the same Wi-Fi. Do not put your W
 Start the Mac service in one terminal:
 
 ```sh
-npm run research:prepare
 npm run research:serve -- --config mods/research_companion/manifest.local.json --host 0.0.0.0
 ```
 
-Preparation requires macOS Command Line Tools. It compiles an Apple Vision face detector and uses macOS Samantha speech to generate “JY, your research note is ready for review.” Generated files stay under ignored `dist/companion/`; regenerate them after `npm run clean`. Restart the service after preparation to load the speech file.
+The service supplies research status. This experimental MOD does not need Mac speech preparation or Apple Vision. Its fixed completion sentence, “JY, your research note is ready for review,” is stored in `assets/research-ready.wav`.
 
 Binding to `0.0.0.0` makes the service reachable on the LAN; omitting `--host` limits it to localhost. Use this HTTP prototype on a trusted LAN, without port forwarding: the shared token and messages are not encrypted. It transports brief status only, not note contents. Allow incoming connections if macOS prompts. Keep the Mac awake during testing.
 
-In another terminal, install the MOD:
+Build and deploy the experimental host once, then install the MOD:
 
 ```sh
 source ~/.local/share/xs-dev-export.sh
 source ~/.espressif/python_env/idf6.1_py3.14_env/bin/activate
+npm run build -- --manifest host/app/manifest_m5stackchan_cores3_local_completion.json
+UPLOAD_PORT=/dev/cu.usbmodem101 npm run deploy -- --manifest host/app/manifest_m5stackchan_cores3_local_completion.json
 npm run mod -- mods/research_companion/manifest.local.json --port /dev/cu.usbmodem101
 ```
 
-This replaces the current MOD and reboots. No host rebuild is needed. The service logs the first authenticated robot poll; idle should show the normal face with no card.
+This replaces the current MOD and reboots. The host rebuild is required for native face detection; subsequent MOD edits only need `npm run mod`. The service logs the first authenticated robot poll; idle should show the normal face with no card.
 
 ## Send a synthetic research sequence
 
@@ -64,11 +65,12 @@ Completion begins with a 45° upward head tilt (pitch −π/4 radians) over 1.5 
 
 Horizontal tracking is now limited to ±30°, with adjustments capped at 10° per step. Positive detections were reported with the 45° tilt, but physical alignment and horizontal direction still need confirmation.
 
-Current detector: Apple's macOS Vision VNDetectFaceRectanglesRequest, running on the Mac; its internal model name is not exposed by this API. M5Stack's [official UIFlow StackChan face-tracking example](https://uiflow-micropython.readthedocs.io/en/master/controllers/stackchan.html#face-tracking) instead uses the on-device dl.model.HUMAN_FACE_DETECT detector with a 45° neutral tilt. This does not confirm the detector in a particular factory firmware version. That UIFlow module is not available to a Moddable MOD without a native integration. The factory and this firmware are separate implementations.
+Current experimental detector: Espressif HumanFaceDetect 0.5.0 (MSR/MNP), running on the ESP32-S3 with ESP-DL 3.3.13. The model is embedded in flash. Camera orientation and real-face accuracy still require device verification. This does not establish which model a particular factory firmware uses.
 
 - `flow-runner.js`: injected display/completion handlers, timers, duplicate suppression, generation guards and dismissal; reusable for other flows.
-- `completion.js`: explicit camera start/capture/stop, two stable detections, bounded yaw ±0.15 radians, authenticated WAV fetch/playback, and stage diagnostics.
-- Mac `completion.mjs` / `detect-face.swift`: in-memory RGB565 detection and canonical 8kHz mono PCM speech preparation. No frames are saved or sent to an external service.
+- `completion.js`: explicit camera start/capture/stop, two stable detections, bounded yaw ±30°, local native face inference, bundled WAV playback, and optional stage diagnostics.
+- Host `local-face-detector`: in-memory RGB565 inference; no camera upload.
+- Mac `completion.mjs` / `detect-face.swift`: retained for the baseline Mac-assisted implementation; unused by this experimental MOD.
 
 No-face and speech errors fall back to visual ready and automatic expiry. Face attention has an eleven-second outer deadline; speech has a twelve-second outer deadline. Audio is a finite three-second clip. Completion IDs are consumed before physical actions and the last sixteen IDs are stored in robot preferences, preventing immediate reconnect/reboot replay. This provides at-most-once attempts: reboot during an announcement does not retry it. A completed task received without first observing it active is ignored. This is bounded replay protection, not a durable general queue.
 
@@ -93,8 +95,8 @@ npm run mod -- mods/jyos_hello/manifest.json --port /dev/cu.usbmodem101
 - `GET /v1/state`: latest snapshot, including service ID and revision.
 - `POST /v1/events`: event JSON; requires `Content-Type: application/json`.
 - Both require `Authorization: Bearer <token>`.
-- `POST /v1/face`: fixed 176×144 RGB565 little-endian frame (`application/octet-stream`), maximum 50,688 bytes; one detection request at a time.
-- `GET /v1/completion.wav`: prepared completion clip, also authenticated.
+- Baseline-only `POST /v1/face` (unused by this experimental MOD): fixed 176×144 RGB565 little-endian frame (`application/octet-stream`), maximum 50,688 bytes; one detection request at a time.
+- Baseline-only `GET /v1/completion.wav` (unused by this experimental MOD): prepared completion clip, also authenticated.
 - `GET /v1/diagnostics`: most recent robot-reported completion stage; stage-only messages contain no images. The service prints stages during device checks.
 - Event: `{ "version": 1, "taskId": "demo-1", "sequence": 1, "phase": "gathering" }`.
 - Optional `text`: at most 80 characters. Default labels fit the screen; longer custom labels may wrap.
@@ -114,3 +116,14 @@ npm run mod -- mods/jyos_hello/manifest.json --port /dev/cu.usbmodem101
 | Mac disconnected | Service unavailable, invalid response, or LAN connection blocked |
 
 See [feature design](../../../knowledge_base/feat/research-companion/design.md) and [issue #1](https://github.com/yeejingye/jyos-stackchan/issues/1).
+
+## Offline completion test
+
+The test MOD simulates a research completion locally and intentionally points helpers at loopback. It starts after host startup plus twelve seconds, then searches, speaks, restores neutral pose and expires the card. It temporarily replaces the research MOD:
+
+```sh
+npm run mod -- mods/research_companion/__tests__/local-completion/manifest.json --port /dev/cu.usbmodem101
+npm run mod -- mods/research_companion/manifest.local.json --port /dev/cu.usbmodem101
+```
+
+The second command restores normal research triggering. See the [experiment record](../../../knowledge_base/feat/research-companion/on-device-experiment.md) for measured results and rollback.

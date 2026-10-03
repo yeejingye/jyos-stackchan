@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { copyFrameFragment } from '../../mods/research_companion/camera-fragment.js'
 import { FlowRunner } from '../../mods/research_companion/flow-runner.js'
@@ -124,4 +125,20 @@ test('WAV conversion preserves PCM across extra padded metadata chunks', () => {
   assert.deepEqual(canonical.subarray(44), pcm)
   assert.equal(canonical.readUInt32LE(4), 40)
   assert.throws(() => canonicalWav(Buffer.from('invalid')), /Expected WAV/)
+})
+
+test('bundled completion WAV has a canonical PCM header and a bounded aligned payload', () => {
+  const wav = readFileSync(new URL('../../mods/research_companion/assets/research-ready.wav', import.meta.url))
+  assert.equal(wav.toString('ascii', 0, 4), 'RIFF')
+  assert.equal(wav.toString('ascii', 8, 12), 'WAVE')
+  assert.equal(wav.toString('ascii', 12, 16), 'fmt ')
+  assert.equal(wav.readUInt32LE(16), 16)
+  assert.equal(wav.readUInt16LE(20), 1)
+  assert.equal(wav.readUInt16LE(22), 1)
+  assert.equal(wav.readUInt16LE(34), 16)
+  assert.equal(wav.toString('ascii', 36, 40), 'data')
+  assert.equal(wav.readUInt32LE(4) + 8, wav.length)
+  assert.equal(wav.readUInt32LE(40) + 44, wav.length)
+  assert.equal(wav.readUInt32LE(40) % wav.readUInt16LE(32), 0)
+  assert.ok(wav.length > 44 && wav.length <= 100044)
 })
