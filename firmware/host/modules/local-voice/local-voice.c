@@ -16,6 +16,7 @@
 #include <string.h>
 
 #define JOY_MAX_FRAME_SAMPLES 512
+#define JOY_QUEUE_FRAMES 64
 typedef struct {
     uint32_t generation;
     int mode;
@@ -31,6 +32,8 @@ typedef struct {
     int chunk;
     int allocated;
     QueueHandle_t queue;
+    StaticQueue_t queue_control;
+    uint8_t *queue_storage;
     SemaphoreHandle_t done;
     TaskHandle_t task;
     portMUX_TYPE lock;
@@ -123,6 +126,9 @@ static void joy_voice_worker(void *argument) {
         else voice->wake_frames++;
         if (result && voice->generation == generation && !voice->result) voice->result = result;
         portEXIT_CRITICAL(&voice->lock);
+        // Let XS finish draining a microphone callback instead of preempting
+        // the producer for a complete inference on every individual submission.
+        vTaskDelay(1);
     }
     xSemaphoreGive(voice->done);
     vTaskDelete(NULL);
@@ -137,6 +143,7 @@ void xs_joy_voice_destructor(void *data) {
         xSemaphoreTake(voice->done, portMAX_DELAY);
     }
     if (voice->queue) vQueueDelete(voice->queue);
+    if (voice->queue_storage) heap_caps_free(voice->queue_storage);
     if (voice->done) vSemaphoreDelete(voice->done);
     if (voice->allocated) esp_mn_commands_free();
     if (voice->commands) voice->mn->destroy(voice->commands);
@@ -210,7 +217,9 @@ void xs_joy_voice_constructor(xsMachine *the) {
     // Four commands behind an explicit wake window; live negative tests still
     // must confirm this trial threshold before the feature is released.
     voice->mn->set_det_threshold(voice->commands, 0.65f);
-    voice->queue = xQueueCreate(2, sizeof(JoyFrame));
+    voice->queue_storage = heap_caps_malloc(JOY_QUEUE_FRAMES * sizeof(JoyFrame), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (voice->queue_storage)
+        voice->queue = xQueueCreateStatic(JOY_QUEUE_FRAMES, sizeof(JoyFrame), voice->queue_storage, &voice->queue_control);
     voice->done = xSemaphoreCreateBinary();
     if (!voice->queue || !voice->done) xsUnknownError("No memory for voice worker queue");
     // The XS/UI task also runs at priority 4. Allow either core and give bounded
