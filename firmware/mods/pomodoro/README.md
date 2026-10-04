@@ -39,7 +39,7 @@ flowchart LR
   Timer --> Release
 ```
 
-The microphone input is bounded to one inference frame. Recognition ignores input during its own cues, mute and research completion. Capture is restarted after playback. Speech models and microphone ownership are released before face detection/announcement and reopened afterwards. Research presentation yields throughout focus, rest and pause. Completion admission is persisted before queuing; reboot cannot replay the pending notice.
+The adapter accumulates one PCM frame at a time; the native worker holds at most 64 copied frames in PSRAM and yields between inference calls. Recognition ignores input during its own cues, mute and research completion. Capture is restarted after playback. Speech models and microphone ownership are released before face detection/announcement and reopened afterwards. Research presentation yields throughout focus, rest and pause. Completion admission is persisted before queuing; reboot cannot replay the pending notice.
 
 This first adapter feeds quiet-room microphone PCM directly to ESP-SR; acoustic echo cancellation/noise suppression is not enabled. Live recognition accuracy, latency and false activations must pass the MiniSRS acceptance checks before this feature is considered complete. Initialization failure leaves manual controls available.
 
@@ -55,3 +55,5 @@ npm run mod:build -- mods/research_companion/manifest.json
 Specification and live acceptance evidence: [knowledge base](../../../knowledge_base/feat/pomodoro/feature.md).
 
 Models: Espressif ESP-SR 2.5.5; `wn9_hijoy_tts` and `mn6_en` plus its required `fst` language graph, source commit `76581015af7075681814627a5bb03d2f3f328f8a`. Espressif model license is included under `host/modules/local-voice/LICENSE.models.txt` and permits use on Espressif products.
+
+With `joyVoice.diagnostics: true`, startup tests Espressif’s reference command audio before starting capture. The face overlay reports the reference result, wake/listening status, recognized command candidates, raw PCM peak and per-window dropped frames. It is not a general speech transcript. A reference pass verifies the native recognizer, not live microphone accuracy.
