@@ -33,6 +33,8 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     }
     const commands = ['', 'pomodoro', 'pause', 'resume', 'cancel']
     const window = controller.window
+    // Diagnostic latency experiment only; product authorization remains five seconds.
+    if (diagnostics) window.windowMs = 12000
     let waitingForReference = diagnostics
     const reset = () => {
       offset = 0
@@ -133,8 +135,14 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
           peak = 0
         } else if (awaitingCommand) {
           awaitingCommand = false
+          const stats = engine?.stats
+          const summary =
+            stats && windowStats
+              ? `${stats.commandFrames - windowStats.commandFrames}/${capturedFrames} frames · lost ${stats.droppedFrames - windowStats.droppedFrames}`
+              : ''
+          trace(`[joy-voice] window-ended ${summary}\n`)
           windowStats = undefined
-          debug(window.muted || window.suspended ? 'Listening interrupted' : 'No command detected')
+          debug(window.muted || window.suspended ? 'Listening interrupted' : 'No command detected', summary)
         }
       }, 1000)
     const adapter = {

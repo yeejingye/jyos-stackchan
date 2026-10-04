@@ -74,3 +74,5 @@ The owner reports no recognition with the gain experiment either. Gain is remove
 ### Half-rate delivered audio
 
 The owner observed 8592 delivered samples/second and 17/17 decoded/submitted frames. This points to a problem before or at frame delivery rather than decoder backlog in that interval, but a single reading does not establish the hardware clock rate. Compiled configuration is 16 kHz stereo; the SDK mono path selects one channel. The next scheduling experiment lowers inference from priority 5 to 3, below the priority-4 XS producer, while retaining bounded buffering and yielding. Full-window delivered rate and recognition remain to be measured.
+
+The owner measured 16039 samples/second with 10/13 frames decoded after capture-first scheduling; the window still ended without a command. Delivered rate is now approximately correct in that reading. A diagnostic-only 12-second window tests whether recognition is delayed beyond five seconds, and timeout shows final decoded/submitted/lost totals. Normal non-diagnostic authorization remains five seconds. This experiment is not acceptance of increased product latency.
