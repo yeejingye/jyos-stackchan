@@ -170,7 +170,7 @@ export async function runResearch({
     '--tools',
     'Read,Write,WebSearch,WebFetch',
     '--allowedTools',
-    `Read,WebSearch,WebFetch,Write(/${output})`,
+    `Read,WebSearch,WebFetch,Edit(/${output})`,
     '--add-dir',
     resolve(output, '..'),
     '--',
@@ -206,6 +206,12 @@ export async function runResearch({
       await run.observe(message)
     }
     const exitCode = await exited
+    if (run.result?.permission_denials?.length)
+      throw new Error(
+        `Claude permission denied: ${run.result.permission_denials.map((item) => item.tool_name ?? 'tool').join(', ')}`,
+      )
+    if (exitCode !== 0 || run.result?.is_error || run.result?.subtype !== 'success')
+      throw new Error('Claude did not complete successfully')
     if (exitCode !== 0 && stderr) warn('Claude exited unsuccessfully; check Claude authentication/permissions')
     const info = await lstat(output)
     if (!info.isFile() || info.isSymbolicLink() || info.size > 250000) throw new Error('Invalid output file')

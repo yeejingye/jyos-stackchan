@@ -1,6 +1,6 @@
 import { Container, Content, Label, Skin, Style, Text } from 'piu/MC'
 
-const COLORS = { surface: '#17212c', border: '#2b3948', text: '#f3f7fc', muted: '#bdcad8', track: '#354353' }
+const COLORS = { surface: '#17212c99', border: '#2b394899', text: '#f3f7fc', muted: '#bdcad8', track: '#354353' }
 const STAGES = ['gathering', 'comparing', 'drafting', 'ready']
 const TITLES = {
   idle: 'Ready when you are',

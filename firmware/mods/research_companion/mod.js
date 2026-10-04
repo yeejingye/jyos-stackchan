@@ -132,6 +132,7 @@ export function onContextCreated(robot) {
       active = false
       try {
         await bounded(robot.motion.setPose({ rotation: { y: 0, p: 0, r: 0 } }, 1.5), 2000)
+        await new Promise((resolve) => Timer.set(resolve, 1500))
       } catch {}
       try {
         await bounded(robot.motion.setTorque(false), 2000)
