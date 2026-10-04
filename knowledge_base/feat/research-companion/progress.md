@@ -66,3 +66,6 @@ Preserved and pushed the working Mac-assisted checkpoint `4c5f047e` before creat
 
 
 Follow-up: added bounded four-orientation camera search and coordinate mapping back to the calibrated yaw direction. All 17 companion tests passed. The rotated device run completed audio and clearing without a detected live face. An official reference image then passed on-device positive detection at 93.2% confidence, plus blank-frame and cleanup checks. Live face placement/alignment remains pending human confirmation.
+
+
+Live rerun with user present, 2026-10-04: the local completion test loaded and connected. Ten camera inferences cycled through all four orientations, reporting no face (first call 260 ms; warm calls 105–128 ms). Audio returned PASS, hardware cleanup finished and the card cleared. The normal research MOD was restored. Physical tilt/turn/speech feedback is pending; the live-camera detection issue remains unresolved despite positive reference-image detection.
