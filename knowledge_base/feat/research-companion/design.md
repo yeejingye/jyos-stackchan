@@ -20,7 +20,7 @@ flowchart LR
 
 The opt-in CoreS3 host exposes native camera face inference. HumanFaceDetect 0.5.0 runs with ESP-DL 3.3.13; it detects face location, not identity. Camera images remain on-device in the completion window. Mac Vision/audio helpers remain available for the earlier baseline; this MOD does not call them.
 
-The face communicates phase through its existing expressions; a compact 272×46 translucent strip gives a concise label, pulsing activity marker and small phase markers. Gathering is neutral, comparison doubtful/curious, drafting sleepy, ready happy, needs-input doubtful and failure sad. It uses no continuous head movement while studying. The visual update is installed; confirm the screen remains legible and the face stays visually dominant before merging.
+The face communicates phase through its existing emotions and eye openness; a compact 272×46 translucent strip gives a concise label, pulsing activity marker and small phase markers. Planning is thoughtful, gathering is attentive with occasional blinks, comparison is inquisitive with a slight asymmetric squint, drafting is focused with both eyes gently narrowed, and ready is happy. Needs-input remains doubtful and failure sad. It uses no continuous head movement while studying. The visual update is installed; confirm the screen remains legible and the face stays visually dominant before merging.
 
 ## Research result gate
 

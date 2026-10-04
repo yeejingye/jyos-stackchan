@@ -15,7 +15,7 @@ export const PRESENTATION = Object.freeze({
   confirming: { emotion: 'DOUBTFUL', text: 'Planning research' },
   gathering: { emotion: 'NEUTRAL', text: 'Finding sources' },
   comparing: { emotion: 'DOUBTFUL', text: 'Thinking it through' },
-  drafting: { emotion: 'SLEEPY', text: 'Writing a note' },
+  drafting: { emotion: 'NEUTRAL', text: 'Writing a note' },
   'needs-input': { emotion: 'DOUBTFUL', text: 'I need your input' },
   ready: { emotion: 'HAPPY', text: 'Ready to review' },
   failed: { emotion: 'SAD', text: 'Research needs help' },

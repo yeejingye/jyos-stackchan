@@ -14,7 +14,7 @@ Updated 2026-10-04. Device: Kickstarter complete CoreS3, opt-in local-completion
 | No-face/offline helper fallback | Earlier local completion tests reached audio completion and clearing with Mac vision/audio helper unreachable |
 | Modular timer flow | Live active/ready timer, service restart preserved serviceId/revision/task; exact completion retry reported duplicate; robot reported cleared |
 | Human observations | User confirmed turning toward them, speech once, neutral return, translucent-card clearing and reboot to normal face without repeated speech |
-| Digital-twin presentation | Compact 272×46 translucent phase strip with short labels and markers; face expressions change with research phases. New MOD flashed and digest verified; awaiting user's visual impression before merge. |
+| Digital-twin presentation | Compact 272×46 translucent phase strip with short labels and markers; phase-specific thoughtful, attentive/blinking, inquisitive and focused eye poses, followed by the happy completion face. Latest MOD flashed and digest verified; awaiting user's visual impression before merge. |
 | Real interactive hooks | Exact research-agent delegation saved a new valid note; hook reached ready; robot reported face-found, motion-start, speech-finished and cleared. Invalid metadata/missing output runs reached failed, without success speech. |
 | Robot reboot replay | USB_UART_CHIP_RESET → SPI_FAST_FLASH_BOOT → network connected; no face search/speech replay. User confirmed normal face and no repeated announcement. |
 | Integration checks | 79 architecture checks and manifest preflight for six standard targets passed; companion Biome checks passed. |

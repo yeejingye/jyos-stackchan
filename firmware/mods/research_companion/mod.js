@@ -18,6 +18,8 @@ export function onContextCreated(robot) {
   const settings = config.researchCompanion ?? {}
   const cursor = new SnapshotCursor()
   let phase = 'idle'
+  let flowId = 'research'
+  let expressionRevision = 0
   const card = createStatusCard()
   card.content.visible = false
   robot.ui.addEffect(card.content, 'research-status')
@@ -27,8 +29,11 @@ export function onContextCreated(robot) {
   let pulse = false
 
   const show = (text, emotion, displayPhase = 'setup', title) => {
+    expressionRevision += 1
     card.content.visible = true
     robot.face.setEmotion(emotion)
+    robot.face.setEyeOpen('left', 1)
+    robot.face.setEyeOpen('right', 1)
     card.update(text, displayPhase, title)
   }
   const hide = () => {
@@ -41,6 +46,23 @@ export function onContextCreated(robot) {
   const showPhase = (text, value, title) => {
     const presentation = PRESENTATION[value] ?? { text: 'Looking for you...', emotion: 'NEUTRAL' }
     show(text || presentation.text, Emotion[presentation.emotion], value, title)
+  }
+  const showResearchPhase = (text, value, title) => {
+    showPhase(text, value, title)
+    switch (value) {
+      case 'confirming':
+        robot.face.setEyeOpen('left', 0.84)
+        robot.face.setEyeOpen('right', 0.84)
+        break
+      case 'comparing':
+        robot.face.setEyeOpen('left', 0.76)
+        robot.face.setEyeOpen('right', 0.94)
+        break
+      case 'drafting':
+        robot.face.setEyeOpen('left', 0.8)
+        robot.face.setEyeOpen('right', 0.8)
+        break
+    }
   }
   let consumed = []
   try {
@@ -82,7 +104,7 @@ export function onContextCreated(robot) {
     })
   register('timer', timerFlow({ show: showPhase, hide }))
   register('research', {
-    show: showPhase,
+    show: showResearchPhase,
     hide,
     readyText: 'Research note ready for review',
     complete: async (_snapshot, current) => {
@@ -190,6 +212,7 @@ export function onContextCreated(robot) {
             }
             cursor.accept(snapshot)
             phase = snapshot.phase
+            flowId = snapshot.flowId ?? 'research'
             gate.observe(snapshot)
             flows.apply(snapshot)
             connected = true
@@ -221,12 +244,30 @@ export function onContextCreated(robot) {
       }
       poll()
       Timer.repeat(poll, POLL_MS)
-      // A small pulsing status marker and phase expressions make the robot feel engaged without moving its head.
+      // The activity marker pulses, and source gathering gets a brief blink every few seconds.
       Timer.repeat(() => {
         const studying =
           connected && !runner.dismissed && !runner.completing && ['gathering', 'comparing', 'drafting'].includes(phase)
         pulse = !pulse
         card.setActivity(studying && pulse)
+        if (studying && flowId === 'research' && phase === 'gathering' && pulse) {
+          const revision = expressionRevision
+          robot.face.setEyeOpen('left', 0.12)
+          robot.face.setEyeOpen('right', 0.12)
+          Timer.set(() => {
+            if (
+              revision === expressionRevision &&
+              connected &&
+              flowId === 'research' &&
+              phase === 'gathering' &&
+              !runner.dismissed &&
+              !runner.completing
+            ) {
+              robot.face.setEyeOpen('left', 1)
+              robot.face.setEyeOpen('right', 1)
+            }
+          }, 140)
+        }
       }, 1200)
     })
     .catch(() => show('Wi-Fi unavailable', Emotion.SAD))
