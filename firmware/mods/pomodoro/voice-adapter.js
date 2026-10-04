@@ -23,6 +23,10 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     let muted = false
     let commandMode = false
     let peak = 0
+    let awaitingCommand = false
+    const debug = (message, detail = '') => {
+      if (diagnostics) controller.voiceDebug(message, detail)
+    }
     const commands = ['', 'pomodoro', 'pause', 'resume', 'cancel']
     const window = controller.window
     const reset = () => {
@@ -59,15 +63,19 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
         const result = engine.detect(frame, commandMode)
         if (result === -2) {
           trace('[joy-voice] Wake engine unavailable; muting recognition\n')
+          debug('Voice unavailable')
           controller.setMuted(true)
           break
         } else if (result === -1) {
           trace('[joy-voice] wake\n')
+          debug('Heard: Hi Joy', 'Greeting…')
           window.wake()
           engine.reset()
           commandMode = true
         } else if (result > 0) {
           const accepted = window.command(commands[result])
+          awaitingCommand = false
+          debug(`Heard: ${commands[result] ?? 'unknown'}`, accepted ? 'Command accepted' : 'Command not accepted')
           trace(`[joy-voice] candidate=${commands[result]} accepted=${accepted}\n`)
           if (accepted) reset()
         }
@@ -80,8 +88,14 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     if (diagnostics)
       diagnosticTimer = Timer.repeat(() => {
         if (engine && window.listening) {
-          trace(`[joy-voice] input-peak=${peak} stats=${JSON.stringify(engine.stats)}\n`)
+          awaitingCommand = true
+          const stats = engine.stats
+          debug('Listening for a command…', `Level ${peak} · dropped ${stats.droppedFrames}`)
+          trace(`[joy-voice] input-peak=${peak} stats=${JSON.stringify(stats)}\n`)
           peak = 0
+        } else if (awaitingCommand) {
+          awaitingCommand = false
+          debug(window.muted || window.suspended ? 'Listening interrupted' : 'No command detected')
         }
       }, 1000)
     const adapter = {
@@ -131,6 +145,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
       },
     }
     controller.attachVoice(adapter)
+    debug('Voice debug ready', 'Say Hi Joy, then a command')
     return adapter
   } catch (error) {
     if (diagnosticTimer) Timer.clear(diagnosticTimer)

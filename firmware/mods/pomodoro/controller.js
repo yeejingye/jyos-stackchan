@@ -2,7 +2,7 @@ import Resource from 'Resource'
 import { Emotion } from 'face-state'
 import { createChime } from 'pomodoro-chime'
 import { CommandWindow } from 'pomodoro-command-window'
-import { createTimerStrip } from 'pomodoro-presentation'
+import { createTimerStrip, createVoiceDebugStrip } from 'pomodoro-presentation'
 import { PomodoroTimer } from 'pomodoro-timer'
 import Time from 'time'
 import Timer from 'timer'
@@ -20,6 +20,9 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
   const timer = new PomodoroTimer({ now })
   const strip = createTimerStrip()
   robot.ui.addEffect(strip.content, 'pomodoro')
+  const voiceDebug = createVoiceDebugStrip()
+  robot.ui.addEffect(voiceDebug.content, 'joy-voice-debug')
+  let debugDeadline = 0
   let adapter
   let audio = Promise.resolve()
   let audioDepth = 0
@@ -87,6 +90,10 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     attachVoice(value) {
       adapter = value
     },
+    voiceDebug(message, detail = '') {
+      voiceDebug.update(message, detail)
+      debugDeadline = now() + 6000
+    },
     async suspendCompletion(value) {
       if (value) {
         window.setSuspended(true)
@@ -109,6 +116,7 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
       adapter?.close()
       adapter = undefined
       robot.ui.removeEffect(strip.content)
+      robot.ui.removeEffect(voiceDebug.content)
       for (const key of ['joyStart', 'joyPause', 'joyCancel', 'joyMute']) {
         robot.ui.removeDrawerButton(key)
         robot.ui.unbindDrawerAction(key)
@@ -126,6 +134,12 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     { key: 'joyMute', label: 'Mute Hi Joy', kind: 'toggle' },
   ])
     robot.ui.addDrawerButton(button)
-  const ticker = Timer.repeat(() => render(timer.tick()), 250)
+  const ticker = Timer.repeat(() => {
+    render(timer.tick())
+    if (debugDeadline && now() >= debugDeadline) {
+      voiceDebug.update('')
+      debugDeadline = 0
+    }
+  }, 250)
   return controller
 }
