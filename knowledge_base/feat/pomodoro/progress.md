@@ -54,3 +54,7 @@ The full-PSRAM experiment faulted at startup with `InstrFetchProhibited`, PC/EXC
 ### On-face command diagnostics
 
 At the owner’s request, the diagnostic MOD now overlays a compact translucent two-line status above the countdown. It shows wake detection, greeting, command listening, detected command/acceptance, or listening timeout. During listening it shows raw PCM peak and cumulative dropped frames; these are diagnostics, not confidence scores. MultiNet supplies command IDs rather than general transcripts, so unrecognized speech is labeled “No command detected.” The overlay expires after six seconds and is enabled only by `joyVoice.diagnostics`. All 13 Pomodoro unit tests and changed-file Biome checks pass; hardware visual validation is pending.
+
+### Follow-up: audio present, no command
+
+The owner saw the listening overlay followed by “No command detected,” with raw peak around 4229 and cumulative dropped frames around 317. Nonzero samples are present; intelligibility has not been verified. The serial capture did not include a command-window attempt, so no new per-window throughput result is claimed. The overlay now reports frame-loss deltas for the current window. A scheduling experiment gives the bounded inference worker priority 5 rather than the UI’s priority 4 and allows either CPU core, instead of pinning inference to core 1. This tests contention as a hypothesis; command acceptance remains pending.

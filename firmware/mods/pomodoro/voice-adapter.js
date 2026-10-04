@@ -24,6 +24,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     let commandMode = false
     let peak = 0
     let awaitingCommand = false
+    let windowStats
     const debug = (message, detail = '') => {
       if (diagnostics) controller.voiceDebug(message, detail)
     }
@@ -58,6 +59,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
         if (commandMode !== window.listening) {
           engine.reset()
           commandMode = window.listening
+          if (diagnostics && commandMode) windowStats = engine.stats
           trace(`[joy-voice] command-window=${commandMode ? 'open' : 'closed'}\n`)
         }
         const result = engine.detect(frame, commandMode)
@@ -90,11 +92,13 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
         if (engine && window.listening) {
           awaitingCommand = true
           const stats = engine.stats
-          debug('Listening for a command…', `Level ${peak} · dropped ${stats.droppedFrames}`)
+          if (!windowStats) windowStats = stats
+          debug('Listening for a command…', `Level ${peak} · lost ${stats.droppedFrames - windowStats.droppedFrames}`)
           trace(`[joy-voice] input-peak=${peak} stats=${JSON.stringify(stats)}\n`)
           peak = 0
         } else if (awaitingCommand) {
           awaitingCommand = false
+          windowStats = undefined
           debug(window.muted || window.suspended ? 'Listening interrupted' : 'No command detected')
         }
       }, 1000)

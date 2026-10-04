@@ -168,7 +168,9 @@ void xs_joy_voice_constructor(xsMachine *the) {
     voice->queue = xQueueCreate(2, sizeof(JoyFrame));
     voice->done = xSemaphoreCreateBinary();
     if (!voice->queue || !voice->done) xsUnknownError("No memory for voice worker queue");
-    if (xTaskCreatePinnedToCore(joy_voice_worker, "joyRecognition", 16384, voice, 4, &voice->task, 1) != pdPASS)
+    // The XS/UI task also runs at priority 4. Allow either core and give bounded
+    // inference precedence over UI work; the queue blocks whenever input is idle.
+    if (xTaskCreate(joy_voice_worker, "joyRecognition", 16384, voice, 5, &voice->task) != pdPASS)
         xsUnknownError("Cannot start voice recognition worker");
 }
 void xs_joy_voice_chunk(xsMachine *the) { xsmcSetInteger(xsResult, get_voice(the)->chunk); }
