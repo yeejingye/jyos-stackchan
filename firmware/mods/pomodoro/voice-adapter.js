@@ -16,7 +16,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     return undefined
   }
   try {
-    engine = new Engine()
+    engine = new Engine(diagnostics)
     const frame = new Uint8Array(engine.chunkSamples * 2)
     let offset = 0
     let suspended = false
@@ -30,6 +30,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     }
     const commands = ['', 'pomodoro', 'pause', 'resume', 'cancel']
     const window = controller.window
+    let waitingForReference = diagnostics
     const reset = () => {
       offset = 0
       peak = 0
@@ -85,10 +86,26 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
         if (suspended || window.suspended) break
       }
     }
-    microphone.start()
-    trace(`[joy-voice] Listening locally; ${engine.chunkSamples} samples/frame\n`)
+    const startCapture = () => {
+      microphone.start()
+      trace(`[joy-voice] Listening locally; ${engine.chunkSamples} samples/frame\n`)
+    }
+    if (!waitingForReference) startCapture()
     if (diagnostics)
       diagnosticTimer = Timer.repeat(() => {
+        if (engine && waitingForReference) {
+          const result = engine.stats.selfTestResult
+          if (!result) {
+            debug('Testing command model…', 'Reference audio, no microphone')
+            return
+          }
+          waitingForReference = false
+          debug(
+            result > 0 ? 'Model reference test passed' : 'Model reference test failed',
+            'Now say Hi Joy, then a command',
+          )
+          startCapture()
+        }
         if (engine && window.listening) {
           awaitingCommand = true
           const stats = engine.stats
@@ -149,7 +166,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
       },
     }
     controller.attachVoice(adapter)
-    debug('Voice debug ready', 'Say Hi Joy, then a command')
+    debug(waitingForReference ? 'Testing command model…' : 'Voice debug ready', 'Say Hi Joy after the test')
     return adapter
   } catch (error) {
     if (diagnosticTimer) Timer.clear(diagnosticTimer)

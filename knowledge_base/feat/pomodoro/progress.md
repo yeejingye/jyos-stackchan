@@ -58,3 +58,7 @@ At the owner’s request, the diagnostic MOD now overlays a compact translucent 
 ### Follow-up: audio present, no command
 
 The owner saw the listening overlay followed by “No command detected,” with raw peak around 4229 and cumulative dropped frames around 317. Nonzero samples are present; intelligibility has not been verified. The serial capture did not include a command-window attempt, so no new per-window throughput result is claimed. The overlay now reports frame-loss deltas for the current window. A scheduling experiment gives the bounded inference worker priority 5 rather than the UI’s priority 4 and allows either CPU core, instead of pinning inference to core 1. This tests contention as a hypothesis; command acceptance remains pending.
+
+### Isolate the model with reference audio
+
+The owner confirmed that “pause” also ends with no detected command, despite nonzero input and zero queue drops. Diagnostic startup now runs Espressif’s 16 kHz mono “Tell me a joke” reference clip directly through MultiNet, on the native worker, before opening the microphone. Its temporary command ID 5 is removed after the test and is never dispatched to timer controls. The reference resource remains rooted until worker shutdown. The overlay and aggregate log report pass/fail. This distinguishes native model/vocabulary integration from the live capture path; it does not certify microphone recognition. All 13 Pomodoro tests and the voice host build pass; live reference outcome is pending.

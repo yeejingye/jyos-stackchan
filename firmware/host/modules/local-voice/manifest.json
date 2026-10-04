@@ -1,7 +1,12 @@
 {
   "modules": { "local-voice": "./local-voice" },
   "preload": ["local-voice"],
-  "data": { "*": "../../../dist/voice-models/joy-voice-models.bin" },
+  "data": {
+    "*": [
+      "../../../dist/voice-models/joy-voice-models.bin",
+      "./assets/joy-reference-command.pcm"
+    ]
+  },
   "platforms": {
     "esp32/m5stackchan_cores3": {
       "dependency": [

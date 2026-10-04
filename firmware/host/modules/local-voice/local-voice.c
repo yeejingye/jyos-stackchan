@@ -37,6 +37,9 @@ typedef struct {
     uint32_t generation;
     int result;
     uint32_t wake_frames, command_frames, dropped_frames, max_inference_us;
+    const uint8_t *reference;
+    size_t reference_size;
+    int self_test_result;
 } JoyVoice;
 static JoyVoice *owner;
 
@@ -48,6 +51,35 @@ static void joy_voice_worker(void *argument) {
     int mode = 0;
     int wake_primed = 0;
     int commands_primed = 0;
+    if (voice->reference) {
+        int recognized = 0;
+        size_t bytes = voice->chunk * sizeof(int16_t);
+        int64_t started = esp_timer_get_time();
+        // Process a known reference without the microphone, queue loss, or wake window.
+        for (size_t offset = 0; offset < voice->reference_size + 16000 * 2 * 2; offset += bytes) {
+            memset(frame.samples, 0, bytes);
+            if (offset < voice->reference_size) {
+                size_t count = voice->reference_size - offset;
+                memcpy(frame.samples, voice->reference + offset, count < bytes ? count : bytes);
+            }
+            esp_mn_state_t state = voice->mn->detect(voice->commands, frame.samples);
+            if (state == ESP_MN_STATE_DETECTED) {
+                esp_mn_results_t *results = voice->mn->get_results(voice->commands);
+                if (results && results->num > 0) recognized = results->command_id[0];
+                break;
+            }
+            vTaskDelay(1);
+        }
+        esp_mn_commands_remove("TELL ME A JOKE");
+        esp_mn_commands_update();
+        voice->mn->clean(voice->commands);
+        commands_primed = 1;
+        portENTER_CRITICAL(&voice->lock);
+        voice->self_test_result = recognized == 5 ? 1 : -1;
+        portEXIT_CRITICAL(&voice->lock);
+        printf("[joy-voice] reference-test recognized=%d expected=5 elapsed-ms=%u\n", recognized,
+            (unsigned)((esp_timer_get_time() - started) / 1000));
+    }
     while (xQueueReceive(voice->queue, &frame, portMAX_DELAY) == pdTRUE) {
         if (frame.mode == -1) break;
         portENTER_CRITICAL(&voice->lock);
@@ -129,6 +161,17 @@ void xs_joy_voice_constructor(xsMachine *the) {
     xsmcSetHostData(xsThis, voice);
     owner = voice;
     voice->lock = (portMUX_TYPE)portMUX_INITIALIZER_UNLOCKED;
+    voice->self_test_result = 1;
+    if (xsmcArgc > 1 && xsmcTypeOf(xsArg(1)) != xsUndefinedType) {
+        void *reference;
+        xsUnsignedValue reference_size;
+        xsmcGetBufferReadable(xsArg(1), &reference, &reference_size);
+        if (!reference_size || reference_size > 160000 || reference_size % 2)
+            xsRangeError("Invalid command reference PCM");
+        voice->reference = reference;
+        voice->reference_size = reference_size;
+        voice->self_test_result = 0;
+    }
     voice->models = srmodel_load(data);
     char *wake_name = esp_srmodel_filter(voice->models, "wn9", "hijoy");
     char *command_name = esp_srmodel_filter(voice->models, "mn6", "en");
@@ -161,6 +204,8 @@ void xs_joy_voice_constructor(xsMachine *the) {
     const char *commands[] = {"POMODORO", "PAUSE", "RESUME", "CANCEL"};
     for (int i = 0; i < 4; i++)
         if (esp_mn_commands_add(i + 1, commands[i]) != ESP_OK) xsUnknownError("Cannot register voice command");
+    if (voice->reference && esp_mn_commands_add(5, "TELL ME A JOKE") != ESP_OK)
+        xsUnknownError("Cannot register reference command");
     if (esp_mn_commands_update()) xsUnknownError("Speech model rejected command vocabulary");
     // Four commands behind an explicit wake window; live negative tests still
     // must confirm this trial threshold before the feature is released.
@@ -212,6 +257,7 @@ void xs_joy_voice_stats(xsMachine *the) {
     portENTER_CRITICAL(&voice->lock);
     uint32_t wake = voice->wake_frames, commands = voice->command_frames;
     uint32_t dropped = voice->dropped_frames, longest = voice->max_inference_us;
+    int self_test_result = voice->self_test_result;
     portEXIT_CRITICAL(&voice->lock);
     xsmcVars(1);
     xsmcSetNewObject(xsResult);
@@ -219,4 +265,5 @@ void xs_joy_voice_stats(xsMachine *the) {
     xsmcSetInteger(xsVar(0), commands); xsmcSet(xsResult, xsID("commandFrames"), xsVar(0));
     xsmcSetInteger(xsVar(0), dropped); xsmcSet(xsResult, xsID("droppedFrames"), xsVar(0));
     xsmcSetInteger(xsVar(0), longest / 1000); xsmcSet(xsResult, xsID("maxInferenceMs"), xsVar(0));
+    xsmcSetInteger(xsVar(0), self_test_result); xsmcSet(xsResult, xsID("selfTestResult"), xsVar(0));
 }

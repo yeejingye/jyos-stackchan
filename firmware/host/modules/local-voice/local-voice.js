@@ -1,10 +1,11 @@
 import Resource from 'Resource'
 
 export default class extends Native('xs_joy_voice_destructor') {
-  constructor() {
+  constructor(diagnostics = false) {
     super()
     this.models = new Resource('joy-voice-models.bin')
-    native('xs_joy_voice_constructor').call(this, this.models)
+    this.reference = diagnostics ? new Resource('joy-reference-command.pcm') : undefined
+    native('xs_joy_voice_constructor').call(this, this.models, this.reference)
   }
   get chunkSamples() {
     return native('xs_joy_voice_chunk').call(this)
