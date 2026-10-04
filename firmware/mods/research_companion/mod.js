@@ -8,6 +8,7 @@ import { Request } from 'http'
 import config from 'mod/config'
 import { createPomodoro } from 'pomodoro-controller'
 import { DeferredCompletion } from 'pomodoro-deferred-completion'
+import { attachLocalVoice } from 'pomodoro-voice-adapter'
 import Preference from 'preference'
 import { PRESENTATION, SnapshotCursor, validateSnapshot } from 'research-status'
 import { createStatusCard } from 'research-status-card'
@@ -33,7 +34,7 @@ export function onContextCreated(robot) {
   let admittedCompletion
 
   const show = (text, emotion, displayPhase = 'setup', title) => {
-    if (pomodoro?.active) return
+    if (pomodoro?.foreground) return
     expressionRevision += 1
     card.content.visible = true
     robot.face.setEmotion(emotion)
@@ -43,7 +44,7 @@ export function onContextCreated(robot) {
   }
   const hide = () => {
     card.content.visible = false
-    if (pomodoro?.active) return
+    if (pomodoro?.foreground) return
     robot.face.setEmotion(Emotion.NEUTRAL)
     robot.face.setEyeOpen('left', 1)
     robot.face.setEyeOpen('right', 1)
@@ -54,7 +55,7 @@ export function onContextCreated(robot) {
     show(text || presentation.text, Emotion[presentation.emotion], value, title)
   }
   const showResearchPhase = (text, value, title) => {
-    if (pomodoro?.active) return
+    if (pomodoro?.foreground) return
     showPhase(text, value, title)
     switch (value) {
       case 'confirming':
@@ -108,11 +109,11 @@ export function onContextCreated(robot) {
           runner.dismiss()
           return
         }
-        pomodoro.window.setSuspended(true)
+        pomodoro.suspendCompletion(true)
         try {
           await definition.complete(snapshot, current)
         } finally {
-          pomodoro.window.setSuspended(false)
+          pomodoro.suspendCompletion(false)
         }
       },
     })
@@ -190,13 +191,15 @@ export function onContextCreated(robot) {
       const pending = deferred.take()
       if (pending) {
         admittedCompletion = pending
+        runner.reset()
         flows.apply(pending)
       }
     },
   })
+  if (config.joyVoice?.enabled !== false) attachLocalVoice(robot, pomodoro)
   const offline = (text = 'Mac disconnected') => {
     connected = false
-    if (pomodoro.active) return
+    if (pomodoro.foreground) return
     if (!runner.key || runner.dismissed || runner.completing) return
     robot.face.setEyeOpen('left', 1)
     robot.face.setEyeOpen('right', 1)
@@ -248,7 +251,7 @@ export function onContextCreated(robot) {
             phase = snapshot.phase
             flowId = snapshot.flowId ?? 'research'
             gate.observe(snapshot)
-            if (pomodoro.active) {
+            if (pomodoro.foreground) {
               if (snapshot.phase === 'ready' && flowId === 'research') deferred.offer(snapshot)
             } else flows.apply(snapshot)
             connected = true
@@ -283,7 +286,7 @@ export function onContextCreated(robot) {
       // The activity marker pulses, and source gathering gets a brief blink every few seconds.
       Timer.repeat(() => {
         const studying =
-          !pomodoro.active &&
+          !pomodoro.foreground &&
           connected &&
           !runner.dismissed &&
           !runner.completing &&
@@ -297,7 +300,7 @@ export function onContextCreated(robot) {
           Timer.set(() => {
             if (
               revision === expressionRevision &&
-              !pomodoro.active &&
+              !pomodoro.foreground &&
               connected &&
               flowId === 'research' &&
               phase === 'gathering' &&

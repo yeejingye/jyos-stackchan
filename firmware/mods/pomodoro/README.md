@@ -1,0 +1,57 @@
+# Hi Joy Pomodoro
+
+Local command interface for one **20-minute focus + 5-minute rest** cycle. No LLM, cloud account or API key is needed. The timer works without the Mac or Wi-Fi after installation.
+
+Say **Hi Joy**, wait for the acknowledgement chime, then say **Pomodoro**, **pause**, **resume** or **cancel** within five seconds. Repeat-start preserves the running or paused session. Cancel and the end of rest return to the normal face. Reboot discards the session.
+
+The translucent bottom strip shows the countdown. Open the normal drawer for Pomodoro, Pause / resume, Cancel timer and Mute Hi Joy. Mute affects recognition, not the timer.
+
+## Install on M5StackChan CoreS3
+
+From `firmware/`:
+
+```bash
+source ~/.local/share/xs-dev-export.sh
+export PATH="$HOME/.espressif/python_env/idf6.1_py3.14_env/bin:$PATH"
+npm run voice:prepare
+npm run build:joy-voice
+npm run flash:joy-voice -- --port /dev/cu.usbmodem101
+npm run mod -- mods/research_companion/manifest.local.json --port /dev/cu.usbmodem101
+```
+
+Use `mods/research_companion/manifest.json` if no research companion configuration exists. Its drawer timer works independently of the research service. Keep private tokens in the ignored local manifest.
+
+`voice:prepare` downloads model files pinned by commit and SHA-256 into generated `dist/voice-models`. The opt-in host embeds them as a resource; existing flash partitions are retained. The normal host remains available through the existing build commands. Generated model data is not committed.
+
+## Architecture
+
+```mermaid
+flowchart LR
+  Mic["CoreS3 microphone: 16 kHz mono PCM"] --> Wake["ESP-SR WakeNet: Hi Joy"]
+  Wake --> Window["5-second command window"]
+  Window --> Commands["MultiNet English: four commands"]
+  Commands --> Timer["Elapsed-time Pomodoro state machine"]
+  Drawer["Manual drawer controls"] --> Timer
+  Timer --> UI["Face + translucent countdown"]
+  Timer --> Chimes["Boundary chimes"]
+  Research["Research completion gate"] --> Queue["Latest admitted notice: volatile"]
+  Queue --> Release["Release after finish or cancel"]
+  Timer --> Release
+```
+
+The microphone input is bounded to one inference frame. Recognition drains and ignores input during its own cues, mute and research completion. Speech models and microphone ownership are released before face detection/announcement and reopened afterwards. Research presentation yields throughout focus, rest and pause. Completion admission is persisted before queuing; reboot cannot replay the pending notice.
+
+This first adapter feeds quiet-room microphone PCM directly to ESP-SR; acoustic echo cancellation/noise suppression is not enabled. Live recognition accuracy, latency and false activations must pass the MiniSRS acceptance checks before this feature is considered complete. Initialization failure leaves manual controls available.
+
+## Verify
+
+```bash
+npm run test:pomodoro
+npm run test:research
+npm run test:unit
+npm run mod:build -- mods/research_companion/manifest.json
+```
+
+Specification and live acceptance evidence: [knowledge base](../../../knowledge_base/feat/pomodoro/feature.md).
+
+Models: Espressif ESP-SR 2.5.5; `wn9_hijoy_tts` and `mn6_en` plus its required `fst` language graph, source commit `76581015af7075681814627a5bb03d2f3f328f8a`. Espressif model license is included under `host/modules/local-voice/LICENSE.models.txt` and permits use on Espressif products.

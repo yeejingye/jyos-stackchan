@@ -8,10 +8,10 @@
 | PM-12 | Completed rest clears countdown and restores normal mode; no further cycle starts | Not run |
 | PM-04, PM-07 | Repeating Pomodoro during either phase or pause preserves phase/time/state; cancel removes countdown and repeating controls is safe | Not run |
 | PM-05 | Owner reviews face visibility, countdown readability and phase/paused distinction on robot | Not run |
-| PM-09 | Exercise competing research flow under agreed ownership policy | Not run; presentation priority open |
-| PM-10 | Reboot during focus, rest and pause: normal mode, no restored countdown; exercise mute and recognition failure | Not run; mute/fallback policies open |
-| PM-13 | Complete research during focus, rest and pause; no completion speech occurs before Pomodoro ends; normal completion or cancellation returns to normal mode before releasing waiting speech once under the agreed queue policy | Not run; expiry and multiple-completion policy open |
+| PM-09 | Exercise competing research flow under agreed ownership policy | Logic implemented: Pomodoro has display priority; live check pending |
+| PM-10 | Reboot during focus, rest and pause: normal mode, no restored countdown; exercise mute and recognition failure | Implemented: mute and manual fallback; live reboot/mute checks pending |
+| PM-13 | Complete research during focus, rest and pause; no completion speech occurs before Pomodoro ends; normal completion or cancellation returns to normal mode before releasing waiting speech once under the agreed queue policy | Queue tests pass: latest admitted notice retained until session ends; no reboot replay. Live check pending |
 | PM-14 | Focus/rest completion each plays its gentle chime once; refreshes and repeated commands do not replay cues | Not run; sound/volume to review |
 
-No commits, push, hardware uploads or product verification for this feature yet. Specification acceptance is separate from runtime acceptance.
+Spec `9a5e6950` and timer `e88e0fa1` committed and pushed. Eight Pomodoro behavior tests, 36 research tests, 407 broader unit tests, 79 architecture checks and six-target manifest preflight pass. Opt-in voice host and companion MOD built, uploaded and flash digests verified. Owner observed restarts with the first listener; voice-disabled recovery was confirmed stable. Worker-based listener validation, layout and full-duration acceptance are pending; compilation and flash verification do not establish product acceptance.
 

@@ -1,0 +1,17 @@
+{
+  "modules": { "local-voice": "./local-voice" },
+  "preload": ["local-voice"],
+  "data": { "*": "../../../dist/voice-models/joy-voice-models.bin" },
+  "platforms": {
+    "esp32/m5stackchan_cores3": {
+      "dependency": [
+        { "name": "cjson", "version": "^1.7.19", "includes": ["cJSON"] },
+        {
+          "name": "esp-sr",
+          "version": "==2.5.5",
+          "includes": ["include/esp32s3", "src/include"]
+        }
+      ]
+    }
+  }
+}

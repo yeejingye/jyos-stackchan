@@ -7,20 +7,20 @@ Specification baseline 0.2 · 2026-10-04 · Owner authorised implementation afte
 | Field | Value |
 | --- | --- |
 | Feature ID | pomodoro |
-| Lifecycle | Planned |
+| Lifecycle | Implemented; live acceptance in progress |
 | Branch | spec/hi-joy-voice-activation |
-| Publication | Specification checkpoint being committed; not pushed |
+| Publication | Spec and timer checkpoints pushed; voice integration checkpoint pending |
 | Hardware | User's M5StackChan CoreS3 |
 | Dependencies | Shared Hi Joy activation, bounded command recognition, timer, face-preserving UI |
-| Release impact | Documentation only now; runtime impact to assess later |
+| Release impact | Minor; opt-in CoreS3 voice capability |
 
 ## Goal and owner-agreed behaviour
 
 Say “Hi Joy”, then “Pomodoro”, to start a 20-minute focus phase followed by a 5-minute rest phase. Say “Hi Joy, pause” to pause the whole running Pomodoro. Say “Hi Joy, cancel” to cancel the session and return to normal mode. Say “Hi Joy, resume” to continue a paused session from its retained phase and remaining time. Complete one focus/rest cycle, then return to normal mode; do not repeat automatically. A gentle chime marks the end of focus and another marks the end of rest. Repeating Pomodoro while a session exists, including while paused, preserves its phase, remaining time and paused/running state. During Pomodoro mode the countdown is visible without substantially blocking the face. Research completion speech is deferred until Pomodoro ends.
 
-The conversational LLM/STT/TTS provider plan is deferred at the owner's request. This feature requires a small recognised command set, not an LLM. An on-device command engine is preferred for investigation but is not yet proven with these English commands in the installed firmware.
+The conversational LLM/STT/TTS provider plan is deferred at the owner's request. This feature requires a small recognised command set, not an LLM. The opt-in host uses ESP-SR 2.5.5, WakeNet Hi Joy and MultiNet English with four commands. Build and flash verification passed; live voice accuracy remains unproven.
 
-## Lifecycle — draft
+## Lifecycle
 
 ```mermaid
 flowchart LR
@@ -75,7 +75,7 @@ The existing display-only timer flow is a reuse reference, not an implemented Po
 
 ## Deferred research announcement policy
 
-Research may continue and save its results while Pomodoro runs. Completion speech waits through focus, rest and pause; pause does not end the session. Release after normal cycle completion or explicit cancellation is required. On cancellation, clear Pomodoro state/UI and return to normal mode before releasing waiting research speech. Proposed integration should coordinate announcement timing without delaying research execution or interfering with completion replay protection. Cancellation release is owner-approved; multiple-completion handling, expiry and any competing face/motion/status presentation remain open. No queue or scheduler implementation exists for this policy yet.
+Research may continue and save its results while Pomodoro runs. Completion speech waits through focus, rest and pause; pause does not end the session. Release after normal cycle completion or explicit cancellation is required. On cancellation, clear Pomodoro state/UI and return to normal mode before releasing waiting research speech. Proposed integration should coordinate announcement timing without delaying research execution or interfering with completion replay protection. Pomodoro owns presentation while active. The latest eligible completion is admitted and persistently deduplicated when received, then held in memory until the timer finishes or is cancelled. Reboot discards it. The implementation does not delay the research agent or result saving.
 
 ## Reboot policy
 

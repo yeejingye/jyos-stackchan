@@ -21,6 +21,8 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
   let adapter
   let audio = Promise.resolve()
   let audioDepth = 0
+  let releasing = false
+  let closed = false
   const window = new CommandWindow({
     now,
     execute: (command) => controller.command(command),
@@ -51,26 +53,39 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
       )
     robot.ui.setDrawerButtonState('joyPause', snapshot.paused)
     if (events.includes('finished') || events.includes('cancelled')) {
+      releasing = true
       robot.face.setEmotion(Emotion.NEUTRAL)
       // Return to normal presentation before handing back completion hardware.
-      void audio.then(onEnd).catch((error) => trace(`[pomodoro] release: ${error}\n`))
+      void audio
+        .then(() => {
+          releasing = false
+          if (!closed) onEnd()
+        })
+        .catch((error) => trace(`[pomodoro] release: ${error}\n`))
     }
   }
   const controller = {
     get active() {
       return timer.active
     },
+    get foreground() {
+      return timer.active || releasing
+    },
     get snapshot() {
       return timer.snapshot()
     },
     window,
     command(command) {
-      if (command === 'pomodoro' && !timer.active && !canStart()) return false
+      if (command === 'pomodoro' && !timer.active && (releasing || !canStart())) return false
       render(timer.command(command))
       return true
     },
     attachVoice(value) {
       adapter = value
+    },
+    suspendCompletion(value) {
+      window.setSuspended(value)
+      adapter?.releaseForCompletion(value)
     },
     setMuted(value) {
       window.setMuted(value)
@@ -78,9 +93,11 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
       robot.ui.setDrawerButtonState('joyMute', value)
     },
     close() {
+      closed = true
       Timer.clear(ticker)
       adapter?.close()
-      robot.ui.removeEffect('pomodoro')
+      adapter = undefined
+      robot.ui.removeEffect(strip.content)
       for (const key of ['joyStart', 'joyPause', 'joyCancel', 'joyMute']) {
         robot.ui.removeDrawerButton(key)
         robot.ui.unbindDrawerAction(key)

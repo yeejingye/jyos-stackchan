@@ -4,6 +4,7 @@
     "pomodoro-command-window": "./command-window",
     "pomodoro-deferred-completion": "./deferred-completion",
     "pomodoro-presentation": "./presentation",
-    "pomodoro-controller": "./controller"
+    "pomodoro-controller": "./controller",
+    "pomodoro-voice-adapter": "./voice-adapter"
   }
 }

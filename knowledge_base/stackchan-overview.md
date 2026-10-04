@@ -6,7 +6,7 @@ Updated 2026-10-04 · Canonical overview source. The HTML is a reading view; det
 
 Joy is the chosen companion name for JYOS StackChan: a physical desktop interface to the owner's knowledge and agent system. Hardware is the Kickstarter complete M5StackChan CoreS3. The repository is yeejingye/jyos-stackchan, forked from stack-chan/stack-chan; delivered research baseline is de40965e.
 
-Joy currently makes Claude research activity visible and announces completion. The Mac runs research and a Wi-Fi status service; the robot handles expressions, local face detection, bounded movement and fixed completion audio. Pomodoro is the next specification, not an implemented feature.
+Joy currently makes Claude research activity visible and announces completion. The Mac runs research and a Wi-Fi status service; the robot handles expressions, local face detection, bounded movement and fixed completion audio. Pomodoro timer and command components are implemented on a feature branch; local voice integration is undergoing live stability checks and is not yet delivered.
 
 ## Hardware basics
 
@@ -37,8 +37,8 @@ Factory AI Agent does not establish that an LLM runs inside the robot. Backend e
 
 ## Planned and deferred
 
-- **[Voice-controlled Pomodoro](feat/pomodoro/feature.md) — Specification draft:** “Hi Joy” then “Pomodoro”: 20 minutes focus, 5 minutes rest, then finish. Voice pause/resume/cancel; unobtrusive countdown; gentle phase chimes. Research speech waits until finish or cancellation. Reboot returns to normal mode.
-- **[Hi Joy activation](feat/hi-joy-voice-activation/feature.md) — Planned · untested:** Reusable wake-word and bounded-command capability. Espressif lists a Hi Joy model, but integration and recognition have not been validated on this robot.
+- **[Voice-controlled Pomodoro](feat/pomodoro/feature.md) — Implementation under test:** “Hi Joy” then “Pomodoro”: 20 minutes focus, 5 minutes rest, then finish. Voice pause/resume/cancel; unobtrusive countdown; gentle phase chimes. Research speech waits until finish or cancellation. Reboot returns to normal mode.
+- **[Hi Joy activation](feat/hi-joy-voice-activation/feature.md) — Experimental integration:** Reusable wake-word and bounded-command capability. The optional host loads Espressif Hi Joy and English command models. Live listening exposed a WakeNet reset fault; the fix is under test. Accuracy targets remain unverified.
 - **[Conversation and Inbox capture](feat/hi-joy-voice-activation/feature.md) — Deferred:** Selectable cloud/local model adapters, research debrief, spoken reflection and requested Workbench Inbox capture remain future proposals. No general conversational service is active in the research MOD.
 
 ## Operating boundaries

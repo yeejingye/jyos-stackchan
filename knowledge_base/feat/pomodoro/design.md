@@ -1,17 +1,41 @@
-# Design discussion
+# Pomodoro implementation design
 
-Owner chose a bounded Pomodoro interaction instead of developing a general voice/LLM pipeline now. Reuse shared activation and flow lifecycle capabilities; keep the timer independent of recognition.
+The owner selected a bounded command interaction instead of a general voice/LLM pipeline. The [MiniSRS](feature.md) defines the agreed behavior. Implementation is modular and keeps recognition separate from elapsed-time timer logic.
 
-Candidate design: on-device wake/command recognition and elapsed-time timer, compact translucent status strip, fixed audio cues. Recognition availability and shared resource coexistence are unverified. No implementation architecture approved yet.
+```mermaid
+flowchart TD
+  PCM["CoreS3 microphone: 16 kHz mono"] --> Wake["WakeNet Hi Joy"]
+  Wake --> Window["Wake authorization: 5 seconds"]
+  PCM --> Commands["MultiNet English: Pomodoro / pause / resume / cancel"]
+  Commands --> Window
+  Window --> Timer["Deadline state machine"]
+  Manual["Drawer start / pause-resume / cancel / mute"] --> Timer
+  Timer --> Strip["Translucent bottom countdown; face remains visible"]
+  Timer --> Cues["Serialized boundary chimes"]
+  Research["Research polling and completion gate"] --> Admission["Persist deduplication on eligible completion"]
+  Admission --> Pending["Latest-only volatile pending notice"]
+  Timer -->|"End or cancel; normal mode first"| Release["Release pending completion once"]
+  Pending --> Release
+  Release --> Hardware["Face attention and existing completion speech"]
+```
 
-Owner confirmed one cycle then finish, and Hi Joy resume with a visible paused countdown. Transition cues and resource-priority behaviour remain open before implementation planning. The [MiniSRS](feature.md) is canonical.
+## Components and resource ownership
 
-Owner requested research speech deferral until Pomodoro ends. Record the proposed full-session quiet period (focus, rest and pause); Cancellation also ends the quiet period: first return to normal mode, then release waiting research speech. Multiple-completion and stale-notice policy remain open before implementation.
+- `firmware/mods/pomodoro/timer.js`: pure deadline logic; pause freezes remaining time, resume creates a new deadline, delayed ticks cross boundaries without drift. A new instance always starts idle.
+- `command-window.js`: recognition policy. Bare commands, unknown speech, expired authorization and muted/suspended input cannot change the timer.
+- `voice-adapter.js`: bounded PCM accumulation and adapter to the optional native engine. Inference runs in a dedicated native worker with a two-frame queue; the UI callback submits copied frames without waiting. Generation guards prevent old results crossing command windows. The current quiet-room implementation does not enable ESP-SR AFE noise suppression or acoustic echo cancellation. Own cues are ignored; completion suspends input and releases models before camera inference.
+- `host/modules/local-voice`: ESP-SR 2.5.5 native binding, WakeNet `wn9_hijoy_tts`, MultiNet `mn6_en` and its required `fst` language graph. The FST asset is checked before model construction; omitting it caused the first startup crash during integration.
+- `presentation.js` / `controller.js`: translucent countdown, drawer controls, cues and monotonic tick adaptation. Timer behavior remains available if recognition initialization fails.
+- `deferred-completion.js`: eligible research completions are persistently deduplicated when admitted and retained only in memory. The latest supersedes earlier notices. A full session or long pause does not expire an admitted notice; reboot discards it without replay.
 
-Owner confirmed gentle chimes at focus/rest completion and preservation of an existing session when Pomodoro is said again. Repeated Pomodoro while paused must not implicitly resume. Chime sound/volume and failure recovery remain specification details.
+Pomodoro owns presentation through focus, rest and pause. Research continues on the Mac and can save results, but its presentation and completion hardware wait. Pomodoro will not start while the existing runner owns completion hardware. Normal completion/cancellation clears the timer strip before releasing the notice.
 
-Owner confirmed reboot returns directly to normal mode without restoring Pomodoro. Deferred research notice recovery must remain separate from timer reset and completion replay protection.
+## Build and deployment
 
-## Implementation baseline
+The standard host remains supported. An opt-in `manifest_m5stackchan_cores3_joy_voice.json` includes local completion and speech bindings. `voice:prepare` downloads pinned, SHA-256-verified model files, independently validates the packed resource, and writes generated assets under `firmware/dist`. Models are embedded as a host resource rather than allocating a new flash partition.
 
-Owner authorised proceeding with the readiness plan. Defaults and recognition targets are recorded in the MiniSRS; latest-only deferred speech is admitted while fresh, retained through the session, and remains silent after reboot. Voice engine feasibility is the first implementation gate.
+The firmware command wrapper seeds managed dependencies before its parallel native compilation and after a manifest-variant clean. The model/license catalog is committed; downloaded weights and binaries are generated and ignored.
+
+## Evidence boundaries
+
+Automated timer, completion admission, binary-resource validation and regression checks pass. Host and MOD flash verification are recorded in [progress](progress.md). Live speech reliability, full-duration timing, chime comfort, display readability and coexistence/reboot checks remain acceptance work; a successful build does not prove these.

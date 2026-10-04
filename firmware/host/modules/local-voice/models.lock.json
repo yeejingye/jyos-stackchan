@@ -1,0 +1,65 @@
+{
+  "commit": "76581015af7075681814627a5bb03d2f3f328f8a",
+  "models": [
+    {
+      "name": "wn9_hijoy_tts",
+      "files": [
+        {
+          "name": "_MODEL_INFO_",
+          "source": "model/wakenet_model/wn9_hijoy_tts/_MODEL_INFO_",
+          "sha256": "2bc021ade56df1be648923d4a17eae3bab219d87fbfa6e7c3bd02ec620bb2443"
+        },
+        {
+          "name": "wn9_data",
+          "source": "model/wakenet_model/wn9_hijoy_tts/wn9_data",
+          "sha256": "ad7dbe072d350534fc0d1cbc53b6e61185f392f49d0f29d953d1671b376b8a6e"
+        },
+        {
+          "name": "wn9_index",
+          "source": "model/wakenet_model/wn9_hijoy_tts/wn9_index",
+          "sha256": "b463a5051d01bddc1f5723cddc8f3d5f11a6c750106694ca4aa0c8fdc235032c"
+        }
+      ]
+    },
+    {
+      "name": "mn6_en",
+      "files": [
+        {
+          "name": "_MODEL_INFO_",
+          "source": "model/multinet_model/mn6_en/_MODEL_INFO_",
+          "sha256": "bc155320b2b9f093c655eea2dbbe75157284f871ecb3fec10f523d1dbac5ef66"
+        },
+        {
+          "name": "mn6_data",
+          "source": "model/multinet_model/mn6_en/mn6_data",
+          "sha256": "c277f32170f54d4578f6d50096cf5c3c2a288cea3585b43c99ec3d3ea0caf693"
+        },
+        {
+          "name": "mn6_index",
+          "source": "model/multinet_model/mn6_en/mn6_index",
+          "sha256": "6fc49932b9cecda2d00a26241d485b94ef6d8ba864d056fcaf3b6591ec398dbe"
+        },
+        {
+          "name": "vocab",
+          "source": "model/multinet_model/mn6_en/vocab",
+          "sha256": "93ada28f3e3fccb11b4da9b3b6265101d41b9b0faf4e7fc081a8d3c6d7ae3ab6"
+        }
+      ]
+    },
+    {
+      "name": "fst",
+      "files": [
+        {
+          "name": "commands_cn.txt",
+          "source": "model/multinet_model/fst/commands_cn.txt",
+          "sha256": "a516f97ec1a826c7cd8396156857169aa3b73df122596f7854d90b23a15f2252"
+        },
+        {
+          "name": "commands_en.txt",
+          "source": "model/multinet_model/fst/commands_en.txt",
+          "sha256": "517b7df8f3471105ae638cd910f4d1c85f9ba7eab9e960aad2c6ca82713ad47e"
+        }
+      ]
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 import { test } from 'node:test'
@@ -109,7 +109,7 @@ test('firmware wrapper cleans manifest switches before every CoreS3 command and 
 })
 
 function createFirmwareWrapperFixture() {
-  const root = mkdtempSync(path.join(tmpdir(), 'stackchan-firmware-wrapper-'))
+  const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'stackchan-firmware-wrapper-')))
   const fixtureFirmware = path.join(root, 'firmware')
   const fixtureWebEditor = path.join(root, 'web', 'editor')
   const sourceSdkconfig = path.join(
@@ -167,7 +167,7 @@ function createFirmwareWrapperFixture() {
   writeFileSync(
     fakeMcconfig,
     `#!/usr/bin/env node
-const { appendFileSync, existsSync, readFileSync, rmSync } = require('node:fs')
+const { appendFileSync, existsSync, readFileSync, realpathSync, rmSync } = require('node:fs')
 const path = require('node:path')
 
 const args = process.argv.slice(2)

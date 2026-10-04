@@ -84,12 +84,17 @@ if (!dryRun && deviceName === 'm5stackchan_cores3' && command !== 'mod' && comma
       outputDirectory: buildOutputDirectory,
       platformName: deviceName,
       applicationName: hostApplicationName,
-      additionalDependencies: manifest.endsWith('manifest_m5stackchan_cores3_local_completion.json')
-        ? [
-            ['espressif/human_face_detect', '==0.5.0'],
-            ['espressif/esp-dl', '==3.3.13'],
-          ]
-        : [],
+      additionalDependencies:
+        manifest.endsWith('manifest_m5stackchan_cores3_local_completion.json') ||
+        manifest.endsWith('manifest_m5stackchan_cores3_joy_voice.json')
+          ? [
+              ['espressif/human_face_detect', '==0.5.0'],
+              ['espressif/esp-dl', '==3.3.13'],
+              ...(manifest.endsWith('manifest_m5stackchan_cores3_joy_voice.json')
+                ? [['espressif/esp-sr', '==2.5.5']]
+                : []),
+            ]
+          : [],
       mode: buildMode,
     })
   } catch (error) {
@@ -114,12 +119,17 @@ if (buildVariantChanged && deviceName === 'm5stackchan_cores3') {
       outputDirectory: buildOutputDirectory,
       platformName: deviceName,
       applicationName: hostApplicationName,
-      additionalDependencies: manifest.endsWith('manifest_m5stackchan_cores3_local_completion.json')
-        ? [
-            ['espressif/human_face_detect', '==0.5.0'],
-            ['espressif/esp-dl', '==3.3.13'],
-          ]
-        : [],
+      additionalDependencies:
+        manifest.endsWith('manifest_m5stackchan_cores3_local_completion.json') ||
+        manifest.endsWith('manifest_m5stackchan_cores3_joy_voice.json')
+          ? [
+              ['espressif/human_face_detect', '==0.5.0'],
+              ['espressif/esp-dl', '==3.3.13'],
+              ...(manifest.endsWith('manifest_m5stackchan_cores3_joy_voice.json')
+                ? [['espressif/esp-sr', '==2.5.5']]
+                : []),
+            ]
+          : [],
       mode: buildMode,
     })
   } catch (error) {

@@ -1,6 +1,6 @@
 # Feature: Voice-controlled Pomodoro
 
-Proposed · Not tested · Local draft on `spec/hi-joy-voice-activation`.
+Implemented · Automated checks passed; live acceptance pending · Branch on `spec/hi-joy-voice-activation`.
 
 Hi Joy → Pomodoro → 20-minute focus and 5-minute rest; voice pause/cancel and a face-preserving countdown.
 
