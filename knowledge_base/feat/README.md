@@ -3,7 +3,7 @@
 | Feature | Lifecycle | Verification | Publication |
 | --- | --- | --- | --- |
 | [JYOS hello](jyos-hello/README.md) | Complete | Greeting and small movement observed | Pushed: `2751159e`; committed directly, no PR |
-| [Research companion](research-companion/README.md) | In progress: Wi-Fi/status foundation | 8 Node tests, MOD build/flash, authenticated Wi-Fi poll, Finding sources screen; further checks pending | `codex/research-status`; [issue #1](https://github.com/yeejingye/jyos-stackchan/issues/1); [draft PR #2](https://github.com/yeejingye/jyos-stackchan/pull/2) |
+| [Research companion](research-companion/README.md) | Ready for review; acceptance complete | 405 unit / 36 companion / 79 architecture tests, six-target manifest checks, real launcher/hooks and user-confirmed hardware lifecycle | Pushed on `codex/on-device-completion`; [issue #1](https://github.com/yeejingye/jyos-stackchan/issues/1); stacked [PR #3](https://github.com/yeejingye/jyos-stackchan/pull/3) → [PR #2](https://github.com/yeejingye/jyos-stackchan/pull/2), unmerged |
 
 ## Feature record format
 

@@ -13,11 +13,11 @@ export const PHASES = Object.freeze([
 export const PRESENTATION = Object.freeze({
   idle: { emotion: 'NEUTRAL', text: 'Ready to research' },
   confirming: { emotion: 'DOUBTFUL', text: 'Planning research' },
-  gathering: { emotion: 'NEUTRAL', text: 'Finding sources...' },
-  comparing: { emotion: 'DOUBTFUL', text: 'Comparing evidence' },
-  drafting: { emotion: 'NEUTRAL', text: 'Writing the note...' },
+  gathering: { emotion: 'NEUTRAL', text: 'Finding sources' },
+  comparing: { emotion: 'DOUBTFUL', text: 'Thinking it through' },
+  drafting: { emotion: 'NEUTRAL', text: 'Writing a note' },
   'needs-input': { emotion: 'DOUBTFUL', text: 'I need your input' },
-  ready: { emotion: 'HAPPY', text: 'Ready for review!' },
+  ready: { emotion: 'HAPPY', text: 'Ready to review' },
   failed: { emotion: 'SAD', text: 'Research needs help' },
 })
 
@@ -25,6 +25,8 @@ export function validateEvent(event) {
   if (!event || typeof event !== 'object' || Array.isArray(event)) return 'Expected an event object'
   if (event.version !== 1) return 'Unsupported protocol version'
   if (typeof event.taskId !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(event.taskId)) return 'Invalid task ID'
+  if (event.flowId !== undefined && (typeof event.flowId !== 'string' || !/^[a-z][a-z0-9-]{0,31}$/.test(event.flowId)))
+    return 'Invalid flow ID'
   if (!Number.isSafeInteger(event.sequence) || event.sequence < 1) return 'Invalid sequence'
   if (!PHASES.includes(event.phase) || event.phase === 'idle') return 'Invalid event phase'
   if (event.text !== undefined && (typeof event.text !== 'string' || event.text.length > 80)) {
@@ -63,11 +65,34 @@ export class ResearchState {
     this.tasks = new Set()
   }
 
+  serialize() {
+    return { version: 1, snapshot: { ...this.snapshot }, tasks: [...this.tasks] }
+  }
+
+  static restore(record) {
+    if (
+      record?.version !== 1 ||
+      !validateSnapshot(record.snapshot) ||
+      !Array.isArray(record.tasks) ||
+      record.tasks.length > 128 ||
+      new Set(record.tasks).size !== record.tasks.length ||
+      record.tasks.some((id) => typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(id)) ||
+      (record.snapshot.taskId && !record.tasks.includes(record.snapshot.taskId))
+    )
+      throw new Error('Invalid persisted companion state')
+    const state = new ResearchState(record.snapshot.serviceId)
+    state.snapshot = { ...record.snapshot }
+    state.tasks = new Set(record.tasks)
+    return state
+  }
+
   accept(event, now = Date.now()) {
     const invalid = validateEvent(event)
     if (invalid) return { status: 400, error: invalid }
     const current = this.snapshot
     if (event.taskId === current.taskId) {
+      if ((event.flowId ?? 'research') !== (current.flowId ?? 'research'))
+        return { status: 409, error: 'Task belongs to a different flow' }
       if (event.sequence < current.sequence) return { status: 409, error: 'Stale event' }
       if (event.sequence === current.sequence) {
         if (event.phase !== current.phase || (event.text ?? '') !== current.text) {
@@ -93,6 +118,7 @@ export class ResearchState {
       serviceId: current.serviceId,
       revision: current.revision + 1,
       taskId: event.taskId,
+      flowId: event.flowId ?? 'research',
       sequence: event.sequence,
       phase: event.phase,
       text: event.text ?? '',

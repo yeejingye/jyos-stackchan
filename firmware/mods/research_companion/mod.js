@@ -1,5 +1,8 @@
 import { ATTENTION_YAW_LIMIT, announce, COMPLETION_PITCH, companionRequest, findFace } from 'companion-completion'
+import { CompletionGate } from 'companion-completion-gate'
+import { FlowRegistry } from 'companion-flow-registry'
 import { FlowRunner } from 'companion-flow-runner'
+import { timerFlow } from 'companion-timer-flow'
 import { Emotion } from 'face-state'
 import { Request } from 'http'
 import config from 'mod/config'
@@ -15,7 +18,8 @@ export function onContextCreated(robot) {
   const settings = config.researchCompanion ?? {}
   const cursor = new SnapshotCursor()
   let phase = 'idle'
-  let observedTask
+  let flowId = 'research'
+  let expressionRevision = 0
   const card = createStatusCard()
   card.content.visible = false
   robot.ui.addEffect(card.content, 'research-status')
@@ -24,10 +28,13 @@ export function onContextCreated(robot) {
   let watchdog
   let pulse = false
 
-  const show = (text, emotion, displayPhase = 'setup') => {
+  const show = (text, emotion, displayPhase = 'setup', title) => {
+    expressionRevision += 1
     card.content.visible = true
     robot.face.setEmotion(emotion)
-    card.update(text, displayPhase)
+    robot.face.setEyeOpen('left', 1)
+    robot.face.setEyeOpen('right', 1)
+    card.update(text, displayPhase, title)
   }
   const hide = () => {
     card.content.visible = false
@@ -36,15 +43,33 @@ export function onContextCreated(robot) {
     robot.face.setEyeOpen('right', 1)
     if (runner?.key) void companionRequest(settings, '/v1/diagnostics?stage=cleared').catch(() => {})
   }
-  const showPhase = (text, value) => {
+  const showPhase = (text, value, title) => {
     const presentation = PRESENTATION[value] ?? { text: 'Looking for you...', emotion: 'NEUTRAL' }
-    show(text || presentation.text, Emotion[presentation.emotion], value)
+    show(text || presentation.text, Emotion[presentation.emotion], value, title)
+  }
+  const showResearchPhase = (text, value, title) => {
+    showPhase(text, value, title)
+    switch (value) {
+      case 'confirming':
+        robot.face.setEyeOpen('left', 0.84)
+        robot.face.setEyeOpen('right', 0.84)
+        break
+      case 'comparing':
+        robot.face.setEyeOpen('left', 0.76)
+        robot.face.setEyeOpen('right', 0.94)
+        break
+      case 'drafting':
+        robot.face.setEyeOpen('left', 0.8)
+        robot.face.setEyeOpen('right', 0.8)
+        break
+    }
   }
   let consumed = []
   try {
     consumed = JSON.parse(Preference.get('jyos', 'completed') ?? '[]')
   } catch {}
   if (!Array.isArray(consumed)) consumed = []
+  const gate = new CompletionGate({ consumed, save: (ids) => Preference.set('jyos', 'completed', JSON.stringify(ids)) })
   const bounded = (operation, ms) =>
     new Promise((resolve, reject) => {
       const timeout = Timer.set(() => reject(new Error('Hardware operation timed out')), ms)
@@ -59,20 +84,30 @@ export function onContextCreated(robot) {
         },
       )
     })
-  const runner = new FlowRunner({
+  const flows = new FlowRegistry({
+    Runner: FlowRunner,
     schedule: (callback, ms) => Timer.set(callback, ms),
     cancel: (timer) => Timer.clear(timer),
-    show: showPhase,
-    hide,
     onError: (error) => trace(`[companion] completion failed: ${error}\n`),
-    complete: async (snapshot, current) => {
-      if (consumed.includes(snapshot.taskId) || observedTask !== snapshot.taskId) {
-        runner.dismiss()
-        return
-      }
-      // Consume before hardware effects: reconnect/reboot must not replay speech.
-      consumed = [...consumed.slice(-15), snapshot.taskId]
-      Preference.set('jyos', 'completed', JSON.stringify(consumed))
+  })
+  const runner = flows.runner
+  const register = (id, definition) =>
+    flows.register(id, {
+      ...definition,
+      complete: async (snapshot, current) => {
+        if (!gate.consume(snapshot)) {
+          runner.dismiss()
+          return
+        }
+        await definition.complete(snapshot, current)
+      },
+    })
+  register('timer', timerFlow({ show: showPhase, hide }))
+  register('research', {
+    show: showResearchPhase,
+    hide,
+    readyText: 'Research note ready for review',
+    complete: async (_snapshot, current) => {
       let active = true
       let attentionActive = true
       const valid = () => active && current()
@@ -117,14 +152,13 @@ export function onContextCreated(robot) {
         }
       }
       active = false
-      if (current()) {
-        try {
-          await bounded(robot.motion.setPose({ rotation: { y: 0, p: 0, r: 0 } }, 1.5), 2000)
-        } catch {}
-        try {
-          await bounded(robot.motion.setTorque(false), 2000)
-        } catch {}
-      }
+      try {
+        await bounded(robot.motion.setPose({ rotation: { y: 0, p: 0, r: 0 } }, 1.5), 2000)
+        await new Promise((resolve) => Timer.set(resolve, 1500))
+      } catch {}
+      try {
+        await bounded(robot.motion.setTorque(false), 2000)
+      } catch {}
     },
   })
   const offline = (text = 'Mac disconnected') => {
@@ -178,8 +212,9 @@ export function onContextCreated(robot) {
             }
             cursor.accept(snapshot)
             phase = snapshot.phase
-            if (!['idle', 'ready', 'failed'].includes(phase)) observedTask = snapshot.taskId
-            runner.apply(snapshot)
+            flowId = snapshot.flowId ?? 'research'
+            gate.observe(snapshot)
+            flows.apply(snapshot)
             connected = true
           } catch {
             offline(status === 401 ? 'Check shared token' : 'Mac disconnected')
@@ -209,14 +244,31 @@ export function onContextCreated(robot) {
       }
       poll()
       Timer.repeat(poll, POLL_MS)
-      // Gentle screen-only study animation; no continuous motor commands.
+      // The activity marker pulses, and source gathering gets a brief blink every few seconds.
       Timer.repeat(() => {
         const studying =
           connected && !runner.dismissed && !runner.completing && ['gathering', 'comparing', 'drafting'].includes(phase)
         pulse = !pulse
-        robot.face.setEyeOpen('left', studying && pulse ? 0.75 : 1)
-        robot.face.setEyeOpen('right', studying && pulse ? 0.75 : 1)
-      }, 1800)
+        card.setActivity(studying && pulse)
+        if (studying && flowId === 'research' && phase === 'gathering' && pulse) {
+          const revision = expressionRevision
+          robot.face.setEyeOpen('left', 0.12)
+          robot.face.setEyeOpen('right', 0.12)
+          Timer.set(() => {
+            if (
+              revision === expressionRevision &&
+              connected &&
+              flowId === 'research' &&
+              phase === 'gathering' &&
+              !runner.dismissed &&
+              !runner.completing
+            ) {
+              robot.face.setEyeOpen('left', 1)
+              robot.face.setEyeOpen('right', 1)
+            }
+          }, 140)
+        }
+      }, 1200)
     })
     .catch(() => show('Wi-Fi unavailable', Emotion.SAD))
 }

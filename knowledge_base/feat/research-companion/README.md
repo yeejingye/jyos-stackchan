@@ -1,48 +1,17 @@
-# Feature: Research companion
+# Research companion
 
-| Field | Value |
+A Claude Code `research-agent` run drives StackChan over Wi-Fi. It studies while the agent works, then tilts upward, briefly locates a face, announces “JY, your research note is ready for review,” returns to neutral and clears its card.
+
+| Item | Current state |
 | --- | --- |
-| Lifecycle | In progress: Wi-Fi/status foundation implemented |
-| Verification | 8 Node tests passed; MOD built/installed; authenticated Wi-Fi polling and Finding sources display observed; remaining screen/reconnect checks pending |
-| Publication | Pushed: `b74fd3c7`; draft PR #2 |
-| Branch | `codex/research-status` |
-| PR / base | [#2](https://github.com/yeejingye/jyos-stackchan/pull/2) (draft, unmerged) / `jyos-stackchan` |
-| Release impact | Expected minor; reassess final implementation |
+| Implementation | Dedicated launcher, scoped interactive hooks, persistent service, modular flows, on-device completion |
+| Tracking | [Issue #1](https://github.com/yeejingye/jyos-stackchan/issues/1) |
+| Review | Stacked [PR #2](https://github.com/yeejingye/jyos-stackchan/pull/2) and [PR #3](https://github.com/yeejingye/jyos-stackchan/pull/3), unmerged |
+| Release impact | Minor: opt-in host and MOD; normal firmware remains available |
+| Verification | [Acceptance record](acceptance.md) separates automated results, device diagnostics and human observations |
 
-Tracking issue: [#1](https://github.com/yeejingye/jyos-stackchan/issues/1). First increment usage: [research MOD guide](../../../firmware/mods/research_companion/README.md).
+Ready means a new, structurally validated research draft was saved. It does not mean human verification or Wiki publication. The current adapters support the public-source ResearchNote profile; private-context research needs an explicit policy before extending validation.
 
-## Purpose
+The Mac runs Claude and the status service. The robot performs completion face inference and plays a bundled sentence locally. USB is used for development and can provide power; runtime status travels over Wi-Fi. A powered robot and reachable, awake Mac are required.
 
-Represent a Claude Code research job physically: study while it runs, show meaningful progress, then find Jingye, look toward him, and announce that the note is ready for review.
-
-## Agreed direction
-
-- Research source: JYOS's Claude Code `research-agent` subagent.
-- Normal connection: Wi-Fi; USB remains available for development/flashing.
-- Completion: spoken through the robot, with expression and gesture.
-- Face locating: bounded camera-assisted search, preferably processed on the Mac.
-- Optional LLM reaction layer: contextual wording and approved gestures based on real events.
-
-## Delivery increments
-
-| Increment | Scope | Acceptance |
-| --- | --- | --- |
-| A | Wi-Fi commands and connection state | Commands acknowledged; disconnect/reconnect tested |
-| B | Research events and studying behavior | Correct task progress; stale/duplicate events handled |
-| C | Spoken completion | One announcement per successful research job |
-| D | Face locating and attention gesture | Face tracking works in tested desk area; absence times out gracefully |
-| E | Optional contextual reactions | Grounded wording; invalid reactions fall back predictably |
-
-Increment A now has an authenticated polling service, task state machine, CLI, and visual MOD. Service replies acknowledge event acceptance, not robot rendering. Automatic Claude result validation, durable state/deduplication, speech, and vision are not implemented.
-
-## Overall acceptance criteria
-
-- [ ] Match events to one active research job and its output note.
-- [ ] Show distinct researching, needs-input, ready, failure, and disconnected states.
-- [ ] Announce readiness only after successful note save and agreed checks.
-- [ ] Attempt face locating, then speak even if no face is found.
-- [ ] Prevent repeated announcements after duplicate events or reconnects.
-- [ ] Keep Claude research functional when robot/service is unavailable.
-- [ ] Record software tests, hardware observations, limitations, and PR publication.
-
-[Design](design.md) · [Progress](progress.md)
+[Developer commands](../../../firmware/mods/research_companion/README.md) · [Architecture](design.md) · [Flow lifecycle](flow-lifecycle.md) · [Development history](progress.md) · [Native experiment](on-device-experiment.md)

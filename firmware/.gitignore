@@ -5,6 +5,8 @@ node_modules/
 /dist/
 /dist-architecture/
 /dist-tests/
+/mods/research_companion/.hook-state/
+/mods/research_companion/.service-state.json*
 
 # Bundle file
 /host/app/tech.moddable.stackchan*

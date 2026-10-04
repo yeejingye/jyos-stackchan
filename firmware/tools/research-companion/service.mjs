@@ -2,12 +2,21 @@ import { randomUUID, timingSafeEqual } from 'node:crypto'
 import { createServer } from 'node:http'
 import { ResearchState } from '../../mods/research_companion/research-status.js'
 
-export function createCompanionServer({ token, serviceId = randomUUID(), onRobotPoll = () => {}, detectFace, speech }) {
+export function createCompanionServer({
+  token,
+  serviceId = randomUUID(),
+  onRobotPoll = () => {},
+  detectFace,
+  speech,
+  stateRecord,
+  saveState = () => {},
+}) {
   if (typeof token !== 'string' || !/^[a-zA-Z0-9_-]{16,128}$/.test(token)) {
     throw new Error('STACKCHAN_COMPANION_TOKEN must be 16–128 letters, digits, underscores or hyphens')
   }
   const expected = Buffer.from(`Bearer ${token}`)
-  const state = new ResearchState(serviceId)
+  let state = stateRecord ? ResearchState.restore(stateRecord) : new ResearchState(serviceId)
+  let mutation = Promise.resolve()
   let detecting = false
   let diagnostic = null
   return createServer(async (req, res) => {
@@ -127,8 +136,23 @@ export function createCompanionServer({ token, serviceId = randomUUID(), onRobot
         reply(400, { error: 'Invalid JSON' })
         return
       }
-      const { status, ...result } = state.accept(event)
-      reply(status, result)
+      mutation = mutation
+        .catch(() => {})
+        .then(async () => {
+          const candidate = ResearchState.restore(state.serialize())
+          const { status, ...result } = candidate.accept(event)
+          if (status === 200 && !result.duplicate) {
+            try {
+              await saveState(candidate.serialize())
+            } catch {
+              reply(503, { error: 'Unable to persist event; retry later' })
+              return
+            }
+            state = candidate
+          }
+          reply(status, result)
+        })
+      await mutation
     } catch {
       reply(400, { error: 'Request interrupted' })
     }

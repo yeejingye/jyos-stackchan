@@ -1,0 +1,47 @@
+{
+  "modules": {
+    "local-face-detector": "./local-face-detector"
+  },
+  "preload": ["local-face-detector"],
+  "platforms": {
+    "esp32/m5stackchan_cores3": {
+      "dependency": [
+        {
+          "name": "human_face_detect",
+          "version": "==0.5.0",
+          "includes": ["."]
+        },
+        {
+          "name": "esp-dl",
+          "version": "==3.3.13",
+          "includes": [
+            "dl",
+            "dl/tool/include",
+            "dl/tensor/include",
+            "dl/base",
+            "dl/base/isa",
+            "dl/math/include",
+            "dl/model/include",
+            "dl/module/include",
+            "fbs_loader/include",
+            "vision/detect",
+            "vision/image",
+            "vision/image/isa"
+          ]
+        },
+        {
+          "idf": "esp_mm"
+        },
+        {
+          "idf": "esp_partition"
+        },
+        {
+          "idf": "spi_flash"
+        }
+      ],
+      "build": {
+        "MAKE_FRAGMENT": "./make.esp32-local-face.mk"
+      }
+    }
+  }
+}

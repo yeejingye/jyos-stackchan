@@ -11,7 +11,7 @@ export class FlowRunner {
       this.reset()
       return
     }
-    const key = `${snapshot.serviceId}:${snapshot.taskId}`
+    const key = `${snapshot.serviceId}:${snapshot.flowId ? `${snapshot.flowId}:` : ''}${snapshot.taskId}`
     // A newer snapshot waits until the current hardware operation releases ownership.
     if (key !== this.key && this.runningHardware) return
     if (key !== this.key) {
@@ -30,7 +30,7 @@ export class FlowRunner {
         .then(() => {
           this.runningHardware = false
           if (!current() || this.dismissed) return
-          this.show(snapshot.text || 'Research note ready for review', 'ready')
+          this.show(snapshot.text || '', 'ready')
           this.timer = this.schedule(() => this.dismiss(), this.readyMs)
         })
     } else {

@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
+import { dirname, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { detectFace, speechPath } from './completion.mjs'
 import { createCompanionServer } from './service.mjs'
@@ -10,10 +11,12 @@ const { values, positionals } = parseArgs({
     port: { type: 'string', default: '8787' },
     url: { type: 'string', default: 'http://127.0.0.1:8787' },
     task: { type: 'string' },
+    flow: { type: 'string', default: 'research' },
     sequence: { type: 'string' },
     phase: { type: 'string' },
     text: { type: 'string' },
     config: { type: 'string' },
+    'state-file': { type: 'string' },
   },
 })
 
@@ -25,10 +28,18 @@ try {
     const port = Number(values.port)
     if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('Invalid port')
     let robotSeen = false
+    const stateFile =
+      values['state-file'] ?? (values.config ? resolve(dirname(values.config), '.service-state.json') : undefined)
     const server = createCompanionServer({
       token,
       detectFace,
       speech: existsSync(speechPath) ? readFileSync(speechPath) : undefined,
+      stateRecord: stateFile && existsSync(stateFile) ? JSON.parse(readFileSync(stateFile, 'utf8')) : undefined,
+      saveState: (record) => {
+        if (!stateFile) return
+        writeFileSync(`${stateFile}.tmp`, JSON.stringify(record), { mode: 0o600 })
+        renameSync(`${stateFile}.tmp`, stateFile)
+      },
       onRobotPoll: () => {
         if (!robotSeen) console.log('Robot connected: authenticated Wi-Fi status poll received')
         robotSeen = true
@@ -53,6 +64,7 @@ try {
         ? JSON.stringify({
             version: 1,
             taskId: values.task,
+            flowId: values.flow,
             sequence: Number(values.sequence),
             phase: values.phase,
             ...(values.text !== undefined && { text: values.text }),
