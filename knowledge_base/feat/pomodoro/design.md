@@ -14,4 +14,4 @@ Owner confirmed reboot returns directly to normal mode without restoring Pomodor
 
 ## Implementation baseline
 
-Owner authorised proceeding with the readiness plan. Defaults and recognition targets are recorded in the MiniSRS; latest-only deferred speech is bounded to five minutes and remains silent after reboot. Voice engine feasibility is the first implementation gate.
+Owner authorised proceeding with the readiness plan. Defaults and recognition targets are recorded in the MiniSRS; latest-only deferred speech is admitted while fresh, retained through the session, and remains silent after reboot. Voice engine feasibility is the first implementation gate.

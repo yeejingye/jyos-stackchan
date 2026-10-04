@@ -6,6 +6,8 @@ import { timerFlow } from 'companion-timer-flow'
 import { Emotion } from 'face-state'
 import { Request } from 'http'
 import config from 'mod/config'
+import { createPomodoro } from 'pomodoro-controller'
+import { DeferredCompletion } from 'pomodoro-deferred-completion'
 import Preference from 'preference'
 import { PRESENTATION, SnapshotCursor, validateSnapshot } from 'research-status'
 import { createStatusCard } from 'research-status-card'
@@ -27,8 +29,11 @@ export function onContextCreated(robot) {
   let activeRequest
   let watchdog
   let pulse = false
+  let pomodoro
+  let admittedCompletion
 
   const show = (text, emotion, displayPhase = 'setup', title) => {
+    if (pomodoro?.active) return
     expressionRevision += 1
     card.content.visible = true
     robot.face.setEmotion(emotion)
@@ -38,6 +43,7 @@ export function onContextCreated(robot) {
   }
   const hide = () => {
     card.content.visible = false
+    if (pomodoro?.active) return
     robot.face.setEmotion(Emotion.NEUTRAL)
     robot.face.setEyeOpen('left', 1)
     robot.face.setEyeOpen('right', 1)
@@ -48,6 +54,7 @@ export function onContextCreated(robot) {
     show(text || presentation.text, Emotion[presentation.emotion], value, title)
   }
   const showResearchPhase = (text, value, title) => {
+    if (pomodoro?.active) return
     showPhase(text, value, title)
     switch (value) {
       case 'confirming':
@@ -95,11 +102,18 @@ export function onContextCreated(robot) {
     flows.register(id, {
       ...definition,
       complete: async (snapshot, current) => {
-        if (!gate.consume(snapshot)) {
+        const admitted = admittedCompletion === snapshot
+        if (admitted) admittedCompletion = undefined
+        if (!admitted && !gate.consume(snapshot)) {
           runner.dismiss()
           return
         }
-        await definition.complete(snapshot, current)
+        pomodoro.window.setSuspended(true)
+        try {
+          await definition.complete(snapshot, current)
+        } finally {
+          pomodoro.window.setSuspended(false)
+        }
       },
     })
   register('timer', timerFlow({ show: showPhase, hide }))
@@ -161,8 +175,28 @@ export function onContextCreated(robot) {
       } catch {}
     },
   })
+  const deferred = new DeferredCompletion((snapshot) => gate.consume(snapshot))
+  pomodoro = createPomodoro(robot, {
+    canStart: () => !runner.runningHardware,
+    onStart: () => {
+      expressionRevision += 1
+      runner.reset()
+      card.content.visible = false
+      robot.face.setEyeOpen('left', 1)
+      robot.face.setEyeOpen('right', 1)
+    },
+    onEnd: () => {
+      if (pomodoro.active) return
+      const pending = deferred.take()
+      if (pending) {
+        admittedCompletion = pending
+        flows.apply(pending)
+      }
+    },
+  })
   const offline = (text = 'Mac disconnected') => {
     connected = false
+    if (pomodoro.active) return
     if (!runner.key || runner.dismissed || runner.completing) return
     robot.face.setEyeOpen('left', 1)
     robot.face.setEyeOpen('right', 1)
@@ -214,7 +248,9 @@ export function onContextCreated(robot) {
             phase = snapshot.phase
             flowId = snapshot.flowId ?? 'research'
             gate.observe(snapshot)
-            flows.apply(snapshot)
+            if (pomodoro.active) {
+              if (snapshot.phase === 'ready' && flowId === 'research') deferred.offer(snapshot)
+            } else flows.apply(snapshot)
             connected = true
           } catch {
             offline(status === 401 ? 'Check shared token' : 'Mac disconnected')
@@ -247,7 +283,11 @@ export function onContextCreated(robot) {
       // The activity marker pulses, and source gathering gets a brief blink every few seconds.
       Timer.repeat(() => {
         const studying =
-          connected && !runner.dismissed && !runner.completing && ['gathering', 'comparing', 'drafting'].includes(phase)
+          !pomodoro.active &&
+          connected &&
+          !runner.dismissed &&
+          !runner.completing &&
+          ['gathering', 'comparing', 'drafting'].includes(phase)
         pulse = !pulse
         card.setActivity(studying && pulse)
         if (studying && flowId === 'research' && phase === 'gathering' && pulse) {
@@ -257,6 +297,7 @@ export function onContextCreated(robot) {
           Timer.set(() => {
             if (
               revision === expressionRevision &&
+              !pomodoro.active &&
               connected &&
               flowId === 'research' &&
               phase === 'gathering' &&

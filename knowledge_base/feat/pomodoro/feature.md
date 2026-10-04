@@ -87,7 +87,7 @@ Owner confirmed returning directly to normal mode after reboot. Do not restore o
 - Recognition uses a five-second window after Hi Joy, with a short acknowledgement chime. Unknown commands expire without changing timer state.
 - Touch/drawer controls expose start, pause/resume, cancel and microphone mute. Muting capture does not stop a running timer.
 - Deferred notices remain silent after reboot, preserving completion replay protection.
-- Defer at most the latest research completion in memory; older pending notices are superseded. A pending notice expires five minutes after completion. Release once after normal completion/cancellation only if still fresh, using the existing completion gate without extending freshness. This bounded policy may skip research audio during a long focus session; the saved research note remains available.
+- Defer at most the latest research completion in memory; older pending notices are superseded. Admit a completion through the existing freshness gate when it arrives, persisting its deduplication marker immediately. Keep that admitted notice in volatile memory until normal completion/cancellation, including a long pause. Release once after returning to normal mode. Reboot loses the pending notice and cannot replay it.
 - Initial voice acceptance target: at least 9/10 wake-and-command attempts per command at approximately 60 cm in a quiet room, response within two seconds of command completion, and no activation during a ten-minute negative/background test. These are targets, not observed performance.
 
 ## Remaining hardware review details

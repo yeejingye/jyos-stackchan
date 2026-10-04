@@ -1,4 +1,5 @@
 {
+  "include": ["../pomodoro/manifest.components.json"],
   "modules": {
     "research-status": "./research-status",
     "research-status-card": "./status-card",

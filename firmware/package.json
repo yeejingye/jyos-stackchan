@@ -90,7 +90,8 @@
     "scan": "xs-dev scan",
     "erase-flash": "esptool erase-flash",
     "install-hook": "lefthook install",
-    "uninstall-hook": "lefthook uninstall"
+    "uninstall-hook": "lefthook uninstall",
+    "test:pomodoro": "node --test mods/pomodoro/*.test.mjs"
   },
   "type": "module",
   "repository": {

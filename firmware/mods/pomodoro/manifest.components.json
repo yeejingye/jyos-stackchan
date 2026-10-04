@@ -1,0 +1,9 @@
+{
+  "modules": {
+    "pomodoro-timer": "./timer",
+    "pomodoro-command-window": "./command-window",
+    "pomodoro-deferred-completion": "./deferred-completion",
+    "pomodoro-presentation": "./presentation",
+    "pomodoro-controller": "./controller"
+  }
+}
