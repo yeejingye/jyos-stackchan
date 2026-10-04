@@ -69,3 +69,8 @@ Follow-up: added bounded four-orientation camera search and coordinate mapping b
 
 
 Live rerun with user present, 2026-10-04: the local completion test loaded and connected. Ten camera inferences cycled through all four orientations, reporting no face (first call 260 ms; warm calls 105–128 ms). Audio returned PASS, hardware cleanup finished and the card cleared. The normal research MOD was restored. Physical tilt/turn/speech feedback is pending; the live-camera detection issue remains unresolved despite positive reference-image detection.
+
+
+Camera diagnostics: both neutral and 45° snapshots rendered as full bitmaps on the robot; no camera images left the device. Neutral brightness mean/stddev 131/82, upward view 182/27, with valid 50,688-byte RGB565LE frames. All eight angle checks returned no face. Camera output is not entirely blank/dark. The user later reported being away during these snapshots, so their no-face result does not establish a detection failure with a person present. Normal research MOD restored; 18 companion tests passed.
+
+Repeated camera diagnostics after asking the user to stay in front of StackChan: both full bitmap previews worked; all four orientations at both poses returned no face. Neutral/upward brightness mean/stddev was 132/82 and 170/72. The user confirmed their face appeared in the 45° view; all rotated inferences still failed. FINISHED was logged. Next: compare live-camera pixel format/color ordering with detector input and assess face scale/quality.

@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
+import { frameStats } from '../../mods/research_companion/__tests__/camera-diagnostics/frame-stats.js'
 import { copyFrameFragment } from '../../mods/research_companion/camera-fragment.js'
 import { FlowRunner } from '../../mods/research_companion/flow-runner.js'
 import { cameraFace, orientFrame } from '../../mods/research_companion/frame-orientation.js'
@@ -173,4 +174,21 @@ test('RGB565 orientation preserves pixels and inverts face coordinates for every
   assert.throws(() => orientFrame(original, 3, 2, 4), RangeError)
   assert.throws(() => orientFrame(original, 2, 2, 0), RangeError)
   assert.deepEqual([...new Uint16Array(original)], [1, 2, 3, 4, 5, 6])
+})
+
+test('camera statistics distinguish blank, saturated and varied RGB565 frames', () => {
+  const black = frameStats(new Uint16Array([0, 0]).buffer)
+  assert.equal(black.mean, 0)
+  assert.equal(black.darkPercent, 100)
+  assert.equal(black.deviation, 0)
+  const white = frameStats(new Uint16Array([65535, 65535]).buffer)
+  assert.equal(white.mean, 255)
+  assert.equal(white.brightPercent, 100)
+  const mixed = frameStats(new Uint16Array([0, 65535]).buffer)
+  assert.equal(mixed.mean, 128)
+  assert.equal(mixed.darkPercent, 50)
+  assert.equal(mixed.brightPercent, 50)
+  assert.equal(mixed.deviation, 128)
+  assert.deepEqual(frameStats(new Uint16Array([0xf800, 0x07e0, 0x001f]).buffer).rgbMean, [85, 85, 85])
+  assert.throws(() => frameStats(new ArrayBuffer(0)), RangeError)
 })

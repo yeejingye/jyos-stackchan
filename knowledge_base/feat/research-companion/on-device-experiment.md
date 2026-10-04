@@ -83,3 +83,24 @@ Normalized detections are transformed back into original camera coordinates befo
 Orientation device run: all four angles completed without inference errors; audio PASS, hardware finished and card clearing were observed again. No live face was detected, so physical tracking remains unverified.
 
 Positive control: the official Espressif Mona Lisa example was converted to a 176×144 RGB565LE test resource. On-device smoke returned a face at normalized (0.4517, 0.5347), confidence 0.93245, and PASS after blank/input/close checks. This establishes that the native model and RGB565 conversion can detect a face, but does not establish live-camera visibility or tracking accuracy. No user camera image was uploaded or saved. Companion tests now total 17.
+
+
+## Live camera diagnostics
+
+The temporary `__tests__/camera-diagnostics` MOD warms the camera, displays a full bitmap snapshot on the robot at neutral pitch and at 45° upward pitch, computes brightness statistics, and tests each snapshot in four orientations. No camera images are uploaded or saved.
+
+Device measurements (176×144 RGB565LE, 50,688 bytes):
+
+| Pose | Mean brightness (0–255) | Standard deviation | Dark pixels | Mean RGB | Preview |
+| --- | --- | --- | --- | --- | --- |
+| Neutral | 131 | 82 | 9% | 132, 130, 136 | Full bitmap |
+| 45° | 182 | 27 | 0% | 189, 181, 176 | Full bitmap |
+
+All eight inferences returned no face. These statistics rule out an entirely blank/dark frame; they do not establish which objects or faces are visible. The user subsequently reported being away during these snapshots, so this run does not test detection with a person present. The 45° frame contains less brightness variation; its contents cannot be inferred reliably from statistics alone. The normal research MOD was restored after diagnostics. Companion tests total 18, including blank/saturated/varied camera-statistics checks.
+
+```sh
+npm run mod -- mods/research_companion/__tests__/camera-diagnostics/manifest.json --port /dev/cu.usbmodem101
+npm run mod -- mods/research_companion/manifest.local.json --port /dev/cu.usbmodem101
+```
+
+Repeat after requesting the user remain in front of the robot: neutral brightness mean/stddev 132/82, RGB means 135/131/127; 45° view 170/72, RGB means 178/169/161. Both previews rendered as full bitmaps; all eight orientation checks returned no face (105–107 ms warm inference). The user confirmed that the 45° view showed their face. Image uprightness and whole-face coverage were not explicitly confirmed. Framing alone no longer explains the result: the next diagnostic should compare live-camera pixel format/color ordering against the native detector input and inspect face scale/quality. The diagnostic completed with FINISHED.
