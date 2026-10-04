@@ -13,11 +13,11 @@ export const PHASES = Object.freeze([
 export const PRESENTATION = Object.freeze({
   idle: { emotion: 'NEUTRAL', text: 'Ready to research' },
   confirming: { emotion: 'DOUBTFUL', text: 'Planning research' },
-  gathering: { emotion: 'NEUTRAL', text: 'Finding sources...' },
-  comparing: { emotion: 'DOUBTFUL', text: 'Comparing evidence' },
-  drafting: { emotion: 'NEUTRAL', text: 'Writing the note...' },
+  gathering: { emotion: 'NEUTRAL', text: 'Finding sources' },
+  comparing: { emotion: 'DOUBTFUL', text: 'Thinking it through' },
+  drafting: { emotion: 'SLEEPY', text: 'Writing a note' },
   'needs-input': { emotion: 'DOUBTFUL', text: 'I need your input' },
-  ready: { emotion: 'HAPPY', text: 'Ready for review!' },
+  ready: { emotion: 'HAPPY', text: 'Ready to review' },
   failed: { emotion: 'SAD', text: 'Research needs help' },
 })
 

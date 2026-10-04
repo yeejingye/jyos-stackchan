@@ -4,7 +4,7 @@ Tracks one research task on a complete M5StackChan CoreS3. On a newly observed t
 
 The robot polls an authenticated Mac HTTP service every two seconds. HTTP requests time out after three seconds. Idle hides the research card. A failed poll during active work shows a disconnected status; completion expiry runs locally even if Wi-Fi drops. The service task may remain ready after its card is cleared.
 
-Status appears in a wide dark bottom card: 24px phase heading, 16px detail, and colored stage markers. Long custom text is shortened on-screen; the full text remains in the service snapshot. Markers show actual phases, not estimated completion percentages.
+The face carries each phase: neutral while gathering, curious while comparing, sleepy while drafting, happy when ready, doubtful when input is needed, and sad on failure. A compact 272×46 translucent strip stays at the bottom with a gentle activity pulse, a few words and small phase markers, leaving most of the face visible. Markers represent actual phases, not estimated completion percentages. Timer and future flow labels use the same strip.
 
 ## Configure and run
 

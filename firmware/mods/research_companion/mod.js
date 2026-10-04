@@ -221,14 +221,13 @@ export function onContextCreated(robot) {
       }
       poll()
       Timer.repeat(poll, POLL_MS)
-      // Gentle screen-only study animation; no continuous motor commands.
+      // A small pulsing status marker and phase expressions make the robot feel engaged without moving its head.
       Timer.repeat(() => {
         const studying =
           connected && !runner.dismissed && !runner.completing && ['gathering', 'comparing', 'drafting'].includes(phase)
         pulse = !pulse
-        robot.face.setEyeOpen('left', studying && pulse ? 0.75 : 1)
-        robot.face.setEyeOpen('right', studying && pulse ? 0.75 : 1)
-      }, 1800)
+        card.setActivity(studying && pulse)
+      }, 1200)
     })
     .catch(() => show('Wi-Fi unavailable', Emotion.SAD))
 }

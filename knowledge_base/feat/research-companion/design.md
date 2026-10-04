@@ -20,6 +20,8 @@ flowchart LR
 
 The opt-in CoreS3 host exposes native camera face inference. HumanFaceDetect 0.5.0 runs with ESP-DL 3.3.13; it detects face location, not identity. Camera images remain on-device in the completion window. Mac Vision/audio helpers remain available for the earlier baseline; this MOD does not call them.
 
+The face communicates phase through its existing expressions; a compact 272×46 translucent strip gives a concise label, pulsing activity marker and small phase markers. Gathering is neutral, comparison doubtful/curious, drafting sleepy, ready happy, needs-input doubtful and failure sad. It uses no continuous head movement while studying. The visual update is installed; confirm the screen remains legible and the face stays visually dominant before merging.
+
 ## Research result gate
 
 The direct launcher requires successful Claude exit/result, successful source activity and output Write, a new contained Workbench Markdown file, and valid ResearchNote metadata/review sections. Interactive hooks correlate exact `research-agent` session/agent identities, observe a new file before and after Write, and require an explicit successful completion marker plus the same metadata validation. Neither global Claude Stop nor unrelated web activity starts a flow.

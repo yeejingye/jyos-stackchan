@@ -104,3 +104,7 @@ Real delegated research-agent hooks were exercised. Missing specification permis
 A timer demonstration used the shared registry without research hardware. Restarting the service during the active timer restored the exact task/service ID/revision; completing and retrying returned duplicate without repeating completion. A robot serial reset booted normally, reconnected and did not replay the old completed research snapshot. The user confirmed the full physical sequence, including direction, speech once, neutral return, card clearing and normal face after reboot without speech replay.
 
 Architecture checks initially exposed the upstream assumption that every top-level MOD is a sample. Added an explicit fork-application catalog with manifest/README completeness and included application imports in production-boundary checks. All 79 architecture checks passed; standard manifest preflight passed for six targets. CI now includes architecture checks. Feature acceptance and current design pages replace stale increment descriptions; chronological experiment notes remain historical evidence.
+
+## Digital-twin visual pass — 2026-10-04
+
+Replaced the large multi-line card with a compact 272×46 translucent status strip, a short phase label, a pulsing activity marker and small lifecycle markers. Existing face expressions distinguish comparison, drafting, ready, input-needed and failure. The head stays still while research is running. Installed and verified the 76,936-byte MOD on CoreS3. User visual review remains the final aesthetic check before merge.
