@@ -1,5 +1,5 @@
 import Modules from 'modules'
-import { amplifyPCM } from 'pomodoro-pcm-gain'
+import Time from 'time'
 import Timer from 'timer'
 
 // Bounded PCM frame accumulator. No recordings or transcripts leave the device.
@@ -24,9 +24,10 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     let muted = false
     let commandMode = false
     let peak = 0
-    let processedPeak = 0
     let awaitingCommand = false
     let windowStats
+    let captureStarted = 0
+    let capturedFrames = 0
     const debug = (message, detail = '') => {
       if (diagnostics) controller.voiceDebug(message, detail)
     }
@@ -36,7 +37,6 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     const reset = () => {
       offset = 0
       peak = 0
-      processedPeak = 0
       commandMode = false
       engine?.reset()
     }
@@ -63,10 +63,19 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
         if (commandMode !== window.listening) {
           engine.reset()
           commandMode = window.listening
-          if (diagnostics && commandMode) windowStats = engine.stats
+          if (diagnostics && commandMode) {
+            windowStats = engine.stats
+            captureStarted = Time.ticks >>> 0
+            capturedFrames = 0
+            trace(
+              `[joy-voice] capture-format rate=${this.sampleRate} channels=${this.channels} bits=${this.bitsPerSample}\n`,
+            )
+          }
           trace(`[joy-voice] command-window=${commandMode ? 'open' : 'closed'}\n`)
         }
-        if (diagnostics && commandMode) processedPeak = Math.max(processedPeak, amplifyPCM(frame.buffer, 4))
+        if (diagnostics && commandMode) {
+          capturedFrames += 1
+        }
         const result = engine.detect(frame, commandMode)
         if (result === -2) {
           trace('[joy-voice] Wake engine unavailable; muting recognition\n')
@@ -114,13 +123,14 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
           awaitingCommand = true
           const stats = engine.stats
           if (!windowStats) windowStats = stats
-          debug(
-            'Listening for a command…',
-            `L ${peak}/${processedPeak} · lost ${stats.droppedFrames - windowStats.droppedFrames}`,
+          const elapsed = ((Time.ticks >>> 0) - captureStarted) >>> 0
+          const inputHz = elapsed ? Math.round((capturedFrames * engine.chunkSamples * 1000) / elapsed) : 0
+          const decoded = stats.commandFrames - windowStats.commandFrames
+          debug('Listening for a command…', `${inputHz} Hz · ${decoded}/${capturedFrames} frames`)
+          trace(
+            `[joy-voice] input-peak=${peak} input-hz=${inputHz} decoded=${decoded} submitted=${capturedFrames} stats=${JSON.stringify(stats)}\n`,
           )
-          trace(`[joy-voice] input-peak=${peak} boosted-peak=${processedPeak} gain=4 stats=${JSON.stringify(stats)}\n`)
           peak = 0
-          processedPeak = 0
         } else if (awaitingCommand) {
           awaitingCommand = false
           windowStats = undefined
