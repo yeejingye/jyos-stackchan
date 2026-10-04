@@ -1,4 +1,5 @@
 import Modules from 'modules'
+import { amplifyPCM } from 'pomodoro-pcm-gain'
 import Timer from 'timer'
 
 // Bounded PCM frame accumulator. No recordings or transcripts leave the device.
@@ -23,6 +24,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     let muted = false
     let commandMode = false
     let peak = 0
+    let processedPeak = 0
     let awaitingCommand = false
     let windowStats
     const debug = (message, detail = '') => {
@@ -34,6 +36,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     const reset = () => {
       offset = 0
       peak = 0
+      processedPeak = 0
       commandMode = false
       engine?.reset()
     }
@@ -63,6 +66,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
           if (diagnostics && commandMode) windowStats = engine.stats
           trace(`[joy-voice] command-window=${commandMode ? 'open' : 'closed'}\n`)
         }
+        if (diagnostics && commandMode) processedPeak = Math.max(processedPeak, amplifyPCM(frame.buffer, 4))
         const result = engine.detect(frame, commandMode)
         if (result === -2) {
           trace('[joy-voice] Wake engine unavailable; muting recognition\n')
@@ -110,9 +114,13 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
           awaitingCommand = true
           const stats = engine.stats
           if (!windowStats) windowStats = stats
-          debug('Listening for a command…', `Level ${peak} · lost ${stats.droppedFrames - windowStats.droppedFrames}`)
-          trace(`[joy-voice] input-peak=${peak} stats=${JSON.stringify(stats)}\n`)
+          debug(
+            'Listening for a command…',
+            `L ${peak}/${processedPeak} · lost ${stats.droppedFrames - windowStats.droppedFrames}`,
+          )
+          trace(`[joy-voice] input-peak=${peak} boosted-peak=${processedPeak} gain=4 stats=${JSON.stringify(stats)}\n`)
           peak = 0
+          processedPeak = 0
         } else if (awaitingCommand) {
           awaitingCommand = false
           windowStats = undefined
