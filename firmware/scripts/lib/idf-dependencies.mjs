@@ -11,10 +11,16 @@ const dependenciesByPlatform = {
 
 /**
  * Seeds a generated CoreS3 IDF manifest before Moddable adds dependencies.
- * @param {{outputDirectory: string, platformName: string, applicationName: string, mode: string}} options - Build output configuration.
+ * @param {{outputDirectory: string, platformName: string, applicationName: string, mode: string, additionalDependencies?: Array<[string, string]>}} options - Build output configuration.
  * @returns {string} Path to the prepared IDF component manifest.
  */
-export function prepareCoreS3IdfDependencies({ outputDirectory, platformName, applicationName, mode }) {
+export function prepareCoreS3IdfDependencies({
+  outputDirectory,
+  platformName,
+  applicationName,
+  mode,
+  additionalDependencies = [],
+}) {
   if (!outputDirectory) throw new Error('Build output directory is required')
   const dependencies = dependenciesByPlatform[platformName]
   if (!dependencies) throw new Error(`Unsupported CoreS3 platform: ${platformName}`)
@@ -42,7 +48,7 @@ export function prepareCoreS3IdfDependencies({ outputDirectory, platformName, ap
     throw new Error(`IDF component manifest has no dependencies block: ${manifestPath}`)
   }
 
-  for (const [name, version] of dependencies) {
+  for (const [name, version] of [...dependencies, ...additionalDependencies]) {
     if (manifest.includes(`  ${name}:`)) continue
     if (!manifest.endsWith('\n')) manifest += '\n'
     manifest += `  ${name}: ${version}\n`

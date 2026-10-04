@@ -96,3 +96,25 @@ test('uses the generated directory for each ESP32 build mode', () => {
 function count(source, value) {
   return source.split(value).length - 1
 }
+
+test('seeds experimental components idempotently without adding them to default builds', () => {
+  const outputDirectory = mkdtempSync(path.join(tmpdir(), 'stackchan-idf-experiment-'))
+  const options = {
+    outputDirectory,
+    platformName: 'm5stackchan_cores3',
+    applicationName: 'stack-chan-host',
+    mode: 'release',
+  }
+  try {
+    const manifestPath = prepareCoreS3IdfDependencies(options)
+    assert.equal(count(readFileSync(manifestPath, 'utf8'), 'espressif/human_face_detect:'), 0)
+    const additionalDependencies = [['espressif/human_face_detect', '==0.5.0']]
+    prepareCoreS3IdfDependencies({ ...options, additionalDependencies })
+    const first = readFileSync(manifestPath, 'utf8')
+    prepareCoreS3IdfDependencies({ ...options, additionalDependencies })
+    assert.equal(readFileSync(manifestPath, 'utf8'), first)
+    assert.equal(count(first, 'espressif/human_face_detect:'), 1)
+  } finally {
+    rmSync(outputDirectory, { recursive: true, force: true })
+  }
+})

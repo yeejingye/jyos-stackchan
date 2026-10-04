@@ -1,0 +1,9 @@
+{
+  "include": ["$(MODDABLE)/examples/manifest_mod.json"],
+  "modules": {
+    "mod": "./mod",
+    "camera-frame-stats": "./frame-stats",
+    "camera-pixel-variants": "./pixel-variants",
+    "companion-frame-orientation": "../../frame-orientation"
+  }
+}

@@ -1,0 +1,57 @@
+import Resource from 'Resource'
+import Modules from 'modules'
+
+function assert(value, message) {
+  if (!value) throw new Error(message)
+}
+function throws(action) {
+  try {
+    action()
+  } catch {
+    return true
+  }
+  return false
+}
+export function onContextCreated(robot) {
+  let detector
+  try {
+    const FaceDetector = Modules.importNow('local-face-detector')
+    detector = new FaceDetector()
+    const blank = new ArrayBuffer(176 * 144 * 2)
+    assert(
+      throws(() => detector.detect(blank, 1, 1)),
+      'reject invalid dimensions',
+    )
+    assert(
+      throws(() => detector.detect(new ArrayBuffer(2), 176, 144)),
+      'reject incomplete frame',
+    )
+    assert(detector.detect(blank, 176, 144) === null, 'blank frame should have no face')
+    assert(detector.detect(blank, 144, 176) === null, 'rotated blank frame should have no face')
+    assert(Number.isFinite(detector.inferenceMs), 'inference timing should be reported')
+    trace(`[local-face-smoke] inferenceMs=${detector.inferenceMs}\n`)
+    const fixture = new Uint8Array(new Resource('face.rgb565')).slice().buffer
+    const face = detector.detect(fixture, 176, 144)
+    assert(face && face.confidence >= 0.5, 'official reference face should be detected')
+    assert(face.x >= 0 && face.x <= 1 && face.y >= 0 && face.y <= 1, 'coordinates should be normalized')
+    trace(`[local-face-smoke] reference face x=${face.x} y=${face.y} confidence=${face.confidence}\n`)
+    detector.close()
+    detector.close()
+    assert(
+      throws(() => detector.detect(blank, 176, 144)),
+      'closed detector should reject inference',
+    )
+    trace('[local-face-smoke] PASS\n')
+    robot.ui.showBalloon('Local detector smoke passed')
+  } catch (error) {
+    trace(`[local-face-smoke] FAIL ${error}\n`)
+    robot.ui.showBalloon('Local detector smoke failed')
+  } finally {
+    detector?.close()
+  }
+}
+
+export function onLaunch() {
+  trace('[local-face-smoke] LOADED\n')
+  return true
+}

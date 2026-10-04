@@ -1,0 +1,16 @@
+{
+  "modules": {
+    "research-status": "./research-status",
+    "research-status-card": "./status-card",
+    "companion-flow-runner": "./flow-runner",
+    "companion-flow-registry": "./flow-registry",
+    "companion-timer-flow": "./timer-flow",
+    "companion-completion-gate": "./completion-gate",
+    "companion-completion": "./completion",
+    "companion-camera-fragment": "./camera-fragment",
+    "companion-frame-orientation": "./frame-orientation"
+  },
+  "data": {
+    "*": "./assets/research-ready.wav"
+  }
+}

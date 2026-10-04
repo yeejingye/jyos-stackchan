@@ -4,7 +4,15 @@ import { dirname, join } from 'node:path'
 import { test } from 'node:test'
 
 const MODULE_ROOT = 'host/modules'
-const PRODUCTION_MANIFEST_ROOTS = ['host/app', 'host/modules', 'host/platforms', 'mods/examples'] as const
+// Fork applications are catalogued separately from upstream samples.
+const APPLICATION_MODS: string[] = readJson('mods/applications.json')
+const PRODUCTION_MANIFEST_ROOTS = [
+  'host/app',
+  'host/modules',
+  'host/platforms',
+  'mods/examples',
+  ...APPLICATION_MODS.map((name) => join('mods', name)),
+]
 const RUNTIME_MODULES = [
   'audio',
   'camera',
@@ -386,13 +394,20 @@ test('shared fakes live in modules/testing and module-local fakes stay under mod
   }
 })
 
-test('sample MOD manifests live under mods/examples', () => {
+test('sample MODs live under examples and top-level applications have complete catalog entries', () => {
+  assert.ok(Array.isArray(APPLICATION_MODS))
+  assert.equal(new Set(APPLICATION_MODS).size, APPLICATION_MODS.length)
+  for (const name of APPLICATION_MODS) {
+    assert.match(name, /^[a-z][a-z0-9_]*$/)
+    assert.ok(existsSync(join('mods', name, 'manifest.json')))
+    assert.ok(existsSync(join('mods', name, 'README.md')))
+  }
   const rootModManifests = readdirSync('mods', { withFileTypes: true })
     .filter((entry) => entry.isDirectory() && entry.name !== 'examples')
     .map((entry) => join('mods', entry.name, 'manifest.json'))
     .filter(existsSync)
 
-  assert.deepEqual(rootModManifests, [])
+  assert.deepEqual(rootModManifests.sort(), APPLICATION_MODS.map((name) => join('mods', name, 'manifest.json')).sort())
 
   const exampleManifests = readdirSync(join('mods', 'examples'), { withFileTypes: true })
     .filter((entry) => entry.isDirectory())
