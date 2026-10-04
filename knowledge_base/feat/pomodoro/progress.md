@@ -70,3 +70,7 @@ Reference outcome: **passed**, detected ID 5 as expected in 3612 ms. The live pa
 Buffered/yielding capture still produced no live Pomodoro candidate. The reference passed again (3603 ms), while the owner reported low live peaks and zero queue drops. A diagnostic-only 4× command gain experiment now scales signed PCM with saturation protection; wake audio and non-diagnostic operation are unchanged. The overlay shows raw/processed peak and per-window loss. Three signal-behavior tests verify silence/polarity, unity and saturation, and rejection without mutation; all 16 Pomodoro tests pass. Input gain remains an experiment, not a claimed recognition fix.
 
 The owner reports no recognition with the gain experiment either. Gain is removed from the live path. The next diagnostic measures actual delivered sample rate and decoded/submitted frame counts, plus runtime format, to distinguish capture discontinuities from decoder backlog. It is instrumentation, not a claimed recognition fix.
+
+### Half-rate delivered audio
+
+The owner observed 8592 delivered samples/second and 17/17 decoded/submitted frames. This points to a problem before or at frame delivery rather than decoder backlog in that interval, but a single reading does not establish the hardware clock rate. Compiled configuration is 16 kHz stereo; the SDK mono path selects one channel. The next scheduling experiment lowers inference from priority 5 to 3, below the priority-4 XS producer, while retaining bounded buffering and yielding. Full-window delivered rate and recognition remain to be measured.
