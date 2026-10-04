@@ -65,7 +65,7 @@ Completion begins with a 45° upward head tilt (pitch −π/4 radians) over 1.5 
 
 Horizontal tracking is now limited to ±30°, with adjustments capped at 10° per step. Positive detections were reported with the 45° tilt, but physical alignment and horizontal direction still need confirmation.
 
-Current experimental detector: Espressif HumanFaceDetect 0.5.0 (MSR/MNP), running on the ESP32-S3 with ESP-DL 3.3.13. The model is embedded in flash. Camera orientation and real-face accuracy still require device verification. This does not establish which model a particular factory firmware uses.
+Current experimental detector: Espressif HumanFaceDetect 0.5.0 (MSR/MNP), running on the ESP32-S3 with ESP-DL 3.3.13. The model is embedded in flash. The MOD cycles through four orientations when no face is found, then keeps the successful orientation for confirmation. Coordinates are mapped back to the camera before moving. Real-face accuracy still requires device verification. This does not establish which model a particular factory firmware uses.
 
 - `flow-runner.js`: injected display/completion handlers, timers, duplicate suppression, generation guards and dismissal; reusable for other flows.
 - `completion.js`: explicit camera start/capture/stop, two stable detections, bounded yaw ±30°, local native face inference, bundled WAV playback, and optional stage diagnostics.

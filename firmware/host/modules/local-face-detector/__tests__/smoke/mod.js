@@ -1,3 +1,4 @@
+import Resource from 'Resource'
 import Modules from 'modules'
 
 function assert(value, message) {
@@ -26,8 +27,14 @@ export function onContextCreated(robot) {
       'reject incomplete frame',
     )
     assert(detector.detect(blank, 176, 144) === null, 'blank frame should have no face')
+    assert(detector.detect(blank, 144, 176) === null, 'rotated blank frame should have no face')
     assert(Number.isFinite(detector.inferenceMs), 'inference timing should be reported')
     trace(`[local-face-smoke] inferenceMs=${detector.inferenceMs}\n`)
+    const fixture = new Uint8Array(new Resource('face.rgb565')).slice().buffer
+    const face = detector.detect(fixture, 176, 144)
+    assert(face && face.confidence >= 0.5, 'official reference face should be detected')
+    assert(face.x >= 0 && face.x <= 1 && face.y >= 0 && face.y <= 1, 'coordinates should be normalized')
+    trace(`[local-face-smoke] reference face x=${face.x} y=${face.y} confidence=${face.confidence}\n`)
     detector.close()
     detector.close()
     assert(
@@ -42,4 +49,9 @@ export function onContextCreated(robot) {
   } finally {
     detector?.close()
   }
+}
+
+export function onLaunch() {
+  trace('[local-face-smoke] LOADED\n')
+  return true
 }

@@ -63,3 +63,6 @@ Verify disconnect/reconnect on hardware. Then turn the temporary test into incre
 ## 2026-10-04 — on-device completion experiment
 
 Preserved and pushed the working Mac-assisted checkpoint `4c5f047e` before creating `codex/on-device-completion`. Added an opt-in CoreS3 ESP-DL native face detector and bundled completion audio. Host build/deploy passed; offline device run reported audio PASS, hardware cleanup and card clearing. Repeated local inference took 106–129 ms after the first call, but no real face was detected, so physical alignment remains pending. The normal research MOD was restored. Tests: 405 unit, 16 companion, 4 dependency checks. See [experiment details](on-device-experiment.md).
+
+
+Follow-up: added bounded four-orientation camera search and coordinate mapping back to the calibrated yaw direction. All 17 companion tests passed. The rotated device run completed audio and clearing without a detected live face. An official reference image then passed on-device positive detection at 93.2% confidence, plus blank-frame and cleanup checks. Live face placement/alignment remains pending human confirmation.

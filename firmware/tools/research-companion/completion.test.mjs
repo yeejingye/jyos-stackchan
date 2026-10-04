@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { copyFrameFragment } from '../../mods/research_companion/camera-fragment.js'
 import { FlowRunner } from '../../mods/research_companion/flow-runner.js'
+import { cameraFace, orientFrame } from '../../mods/research_companion/frame-orientation.js'
 import { canonicalWav } from './completion.mjs'
 
 test('upload copies buffer bytes without relying on a buffer slice method', () => {
@@ -141,4 +142,35 @@ test('bundled completion WAV has a canonical PCM header and a bounded aligned pa
   assert.equal(wav.readUInt32LE(40) + 44, wav.length)
   assert.equal(wav.readUInt32LE(40) % wav.readUInt16LE(32), 0)
   assert.ok(wav.length > 44 && wav.length <= 100044)
+})
+
+test('RGB565 orientation preserves pixels and inverts face coordinates for every turn', () => {
+  const original = new Uint16Array([1, 2, 3, 4, 5, 6]).buffer
+  const results = [
+    [1, 2, 3, 4, 5, 6],
+    [4, 1, 5, 2, 6, 3],
+    [6, 5, 4, 3, 2, 1],
+    [3, 6, 2, 5, 1, 4],
+  ]
+  for (let turns = 0; turns < 4; turns++) {
+    const rotated = orientFrame(original, 3, 2, turns)
+    assert.deepEqual([...new Uint16Array(rotated.buffer)], results[turns])
+    const restored = orientFrame(rotated.buffer, rotated.width, rotated.height, (4 - turns) % 4)
+    assert.deepEqual([...new Uint16Array(restored.buffer)], [1, 2, 3, 4, 5, 6])
+    const x = 0.2,
+      y = 0.7
+    const viewed = [
+      { x, y },
+      { x: 1 - y, y: x },
+      { x: 1 - x, y: 1 - y },
+      { x: y, y: 1 - x },
+    ][turns]
+    const face = cameraFace({ ...viewed, confidence: 0.9 }, turns)
+    assert.ok(Math.abs(face.x - x) < 1e-12 && Math.abs(face.y - y) < 1e-12)
+    assert.equal(face.confidence, 0.9)
+  }
+  assert.equal(cameraFace(null, 2), null)
+  assert.throws(() => orientFrame(original, 3, 2, 4), RangeError)
+  assert.throws(() => orientFrame(original, 2, 2, 0), RangeError)
+  assert.deepEqual([...new Uint16Array(original)], [1, 2, 3, 4, 5, 6])
 })

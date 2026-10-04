@@ -1,4 +1,9 @@
 {
   "include": ["$(MODDABLE)/examples/manifest_mod.json"],
-  "modules": { "mod": "./mod" }
+  "modules": {
+    "mod": "./mod"
+  },
+  "data": {
+    "*": "./face.rgb565"
+  }
 }

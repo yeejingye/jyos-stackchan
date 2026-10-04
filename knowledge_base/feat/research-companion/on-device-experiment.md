@@ -72,3 +72,14 @@ The Mac-assisted baseline remains in checkpoint `4c5f047e`. The experimental res
 - Switching the source mapped to a cached module can retain old bytecode if the replacement source has an older timestamp. The test entry point logs `LOADED` to verify which code is running.
 - Serial monitor opening may reset this board. Configure DTR/RTS before opening and allow enough time for network startup and the complete flow.
 - The bundled sentence is fixed PCM playback. Arbitrary on-device TTS is not part of this experiment.
+
+## Orientation follow-up
+
+The Mac baseline checked four orientations, whereas the first native experiment used only upright input. The local search now cycles through 0°, 90°, 180° and 270° across unsuccessful frames within the same eight-second deadline. It keeps the successful angle to obtain the second stable detection. Pixel rotation uses one bounded 50,688-byte scratch buffer; the camera buffer remains owned and closed by its caller. Native input accepts the original dimensions and the swapped dimensions for quarter turns.
+
+Normalized detections are transformed back into original camera coordinates before applying the existing yaw direction. Behavioral tests verify pixel placement, inverse rotations, source preservation and coordinate round trips. The first experiment remains available at `48305124`.
+
+
+Orientation device run: all four angles completed without inference errors; audio PASS, hardware finished and card clearing were observed again. No live face was detected, so physical tracking remains unverified.
+
+Positive control: the official Espressif Mona Lisa example was converted to a 176×144 RGB565LE test resource. On-device smoke returned a face at normalized (0.4517, 0.5347), confidence 0.93245, and PASS after blank/input/close checks. This establishes that the native model and RGB565 conversion can detect a face, but does not establish live-camera visibility or tracking accuracy. No user camera image was uploaded or saved. Companion tests now total 17.

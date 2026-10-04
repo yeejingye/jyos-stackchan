@@ -21,7 +21,8 @@ extern "C" void xs_local_face_detect(xsMachine *the) {
     void *pixels;
     xsUnsignedValue length;
     const int width = xsmcToInteger(xsArg(1)), height = xsmcToInteger(xsArg(2));
-    if ((width != 176) || (height != 144)) xsRangeError("expected 176x144 RGB565LE");
+    if (!(((width == 176) && (height == 144)) || ((width == 144) && (height == 176))))
+        xsRangeError("expected a bounded completion frame");
     xsmcGetBufferReadable(xsArg(0), &pixels, &length);
     if (length != static_cast<unsigned>(width * height * 2)) xsRangeError("invalid camera frame length");
     dl::image::img_t image = {pixels, static_cast<uint16_t>(width), static_cast<uint16_t>(height), dl::image::DL_IMAGE_PIX_TYPE_RGB565LE};

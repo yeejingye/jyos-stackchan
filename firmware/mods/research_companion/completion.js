@@ -1,5 +1,6 @@
 import Resource from 'Resource'
 import { copyFrameFragment } from 'companion-camera-fragment'
+import { cameraFace, orientFrame } from 'companion-frame-orientation'
 import { Request } from 'http'
 import Modules from 'modules'
 import Timer from 'timer'
@@ -71,6 +72,7 @@ export async function findFace(robot, settings, current, show) {
   let yaw = robot.motion.pose?.body?.rotation?.y ?? 0
   let moved = false
   let detector
+  let orientation = 0
   try {
     if (!Modules.has('local-face-detector')) throw new Error('Experimental local detector host required')
     const FaceDetector = Modules.importNow('local-face-detector')
@@ -85,8 +87,11 @@ export async function findFace(robot, settings, current, show) {
         frame = await robot.camera.capture({ width: 176, height: 144, imageType: 'rgb565le' })
         if (!frame || !current()) break
         reportStage(settings, 'frame-captured')
-        detection = { face: detector.detect(frame.buffer, 176, 144) }
-        trace(`[companion] local face=${!!detection.face} inferenceMs=${detector.inferenceMs}\n`)
+        const oriented = orientFrame(frame.buffer, 176, 144, orientation)
+        detection = { face: cameraFace(detector.detect(oriented.buffer, oriented.width, oriented.height), orientation) }
+        trace(
+          `[companion] local face=${!!detection.face} orientation=${orientation * 90} inferenceMs=${detector.inferenceMs}\n`,
+        )
       } finally {
         frame?.close?.()
       }
@@ -109,7 +114,10 @@ export async function findFace(robot, settings, current, show) {
           moved = true
         }
         lastX = face.x
-      } else lastX = undefined
+      } else {
+        lastX = undefined
+        orientation = (orientation + 1) % 4
+      }
       await new Promise((resolve) => Timer.set(resolve, 250))
     }
   } catch (error) {
