@@ -1,3 +1,7 @@
+# Current status
+
+See [acceptance](acceptance.md) and [architecture](design.md) for the current implementation. Entries below are chronological development history; earlier pending items may have been completed in later entries.
+
 # Progress: Research companion
 
 | Date | Stage | Milestone | Evidence |
@@ -92,3 +96,11 @@ Completion increment 2: live upright-face test at requested 60 cm detected a nor
 Completion increment 3: installed research-scoped hooks in JYOS local Claude settings (excluded from Git). Exact research-agent start/stop, tracked tool identities, explicit result marker and newly saved valid note gate completion; unrelated activity emits nothing. Direct launcher suppresses duplicate hooks. Hook metadata uses private ignored files and serialized updates. Added persisted companion snapshots/retired IDs; event publication waits for successful persistence, with rollback on storage failure. All 36 companion tests passed. Interactive live hook execution and hardware service-restart verification remain pending.
 
 Completion increment 4: production MOD deployed/verified (76,876 bytes), new persistent service authenticated robot polls, and the permanent launcher completed real Claude research to a new Workbench ResearchNote: `Research - StackChan HTTP companion acceptance - 2026-10-04.md`. The initial attempt correctly failed with no saved note; Claude path write permissions require Edit(path), not Write(path), which was corrected. Retry passed note/source/review validation and emitted ready automatically. Device stages reported face-found, motion-start, speech-finished and cleared. No manual ready event was used. Note remains working/unverified and explicitly reports summary-only evidence and inference. Added neutral-settle delay before torque release and a translucent status surface. Current local checks: 405 firmware unit tests, 36 companion tests and Biome passed. A feature-branch read-only CI workflow was added; hardware/UI feedback and recovery checks remain pending.
+
+## Final acceptance — 2026-10-04
+
+Real delegated research-agent hooks were exercised. Missing specification permissions and invalid output metadata correctly emitted failed, without success announcements. With explicit public-note access metadata and the run timestamp supplied by the hook, a new validated note emitted ready; robot diagnostics reported face-found, motion-start, speech-finished and cleared. The dedicated launcher had already completed the same end-to-end path.
+
+A timer demonstration used the shared registry without research hardware. Restarting the service during the active timer restored the exact task/service ID/revision; completing and retrying returned duplicate without repeating completion. A robot serial reset booted normally, reconnected and did not replay the old completed research snapshot. The user confirmed the full physical sequence, including direction, speech once, neutral return, card clearing and normal face after reboot without speech replay.
+
+Architecture checks initially exposed the upstream assumption that every top-level MOD is a sample. Added an explicit fork-application catalog with manifest/README completeness and included application imports in production-boundary checks. All 79 architecture checks passed; standard manifest preflight passed for six targets. CI now includes architecture checks. Feature acceptance and current design pages replace stale increment descriptions; chronological experiment notes remain historical evidence.

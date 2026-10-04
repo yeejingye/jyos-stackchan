@@ -79,8 +79,7 @@ async function processResearchHook(payload, { stateDir, workbench, send = async 
     result = {
       hookSpecificOutput: {
         hookEventName: 'SubagentStart',
-        additionalContext:
-          'The StackChan companion tracks this research run. At the end, after a successful new ResearchNote save, append one line: JYOS_RESEARCH_RESULT: {"status":"success","output":"/absolute/path/to/new-note.md"}. If no successful save occurred, use status "failed" or "needs-input" instead. This marker reports output status, never human verification. Keep your existing source, scope and file-write permissions.',
+        additionalContext: `The StackChan companion tracks this research run, started at ${new Date(state.startedAt).toISOString()}. Use this timestamp for generated.at if no more precise current timestamp is available. Readiness currently supports the explicitly authorised public-source ResearchNote profile: jyos.schema "0.1", new id, maturity working, sensitivity normal, ai_access explicit, wiki.ingest false, generated.by agent:research-agent, sources with id/resource/title/retrieved_at, and Summary in plain English, Claim status, Still to check sections. Do not infer public-source permission or change a private-context task to fit this profile. At the end, after a successful new ResearchNote save, append one line: JYOS_RESEARCH_RESULT: {"status":"success","output":"/absolute/path/to/new-note.md"}. If no successful save occurred, use status "failed" or "needs-input" instead. This marker reports output status, never human verification. Keep your existing source, scope and file-write permissions.`,
       },
     }
   } else if (payload.hook_event_name === 'PreToolUse' && payload.tool_name === 'Write') {

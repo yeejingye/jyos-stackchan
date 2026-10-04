@@ -1,6 +1,6 @@
 # Research companion
 
-Tracks one research task on a complete M5StackChan CoreS3. On a newly observed task completing, the MOD searches for a face for up to eight seconds, makes bounded horizontal adjustments, plays a spoken completion cue, and clears the ready card after fifteen seconds. On this experimental branch, face inference and playback run on the robot. The fixed completion sentence is a bundled WAV, not arbitrary local text-to-speech. Deploy the experimental local-completion host before installing this MOD. Automatic Claude hooks remain a separate pending increment; the live research tests use a temporary external runner.
+Tracks one research task on a complete M5StackChan CoreS3. On a newly observed task completing, the MOD searches for a face for up to eight seconds, makes bounded horizontal adjustments, plays a spoken completion cue, and clears the ready card after fifteen seconds. On this experimental branch, face inference and playback run on the robot. The fixed completion sentence is a bundled WAV, not arbitrary local text-to-speech. Deploy the experimental local-completion host before installing this MOD. A dedicated launcher and scoped interactive Claude hooks validate a new research note before reporting ready.
 
 The robot polls an authenticated Mac HTTP service every two seconds. HTTP requests time out after three seconds. Idle hides the research card. A failed poll during active work shows a disconnected status; completion expiry runs locally even if Wi-Fi drops. The service task may remain ready after its card is cleared.
 
@@ -55,17 +55,17 @@ npm run research:event -- --config mods/research_companion/manifest.local.json -
 npm run research:event -- --config mods/research_companion/manifest.local.json --task demo-1 --sequence 4 --phase ready
 ```
 
-`ready` here is a manual test event, not proof that Claude research finished. The later Claude adapter must confirm a saved/checked ResearchNote before sending it. Use a new task ID for another demo after ready/failed; terminal tasks cannot resume.
+`ready` here is a manual test event, not proof that Claude research finished. The installed Claude adapters confirm a saved/checked ResearchNote before sending it. Use a new task ID for another demo after ready/failed; terminal tasks cannot resume.
 
-Allow at least one poll interval between the start and ready commands: the robot deliberately ignores completion for a task it never saw active. Keep a face visible to its front camera. The largest detected face is the target; this detects location, not personal identity. The first hardware test rebooted during completion; stage diagnostics and an explicit camera-start correction were added. Camera orientation, motion direction, speech and clearing still need successful on-device confirmation before describing the sequence as hardware validated.
+Allow at least one poll interval between the start and ready commands: the robot deliberately ignores completion for a task it never saw active. Keep a face visible to its front camera. The largest detected face is the target; this detects location, not personal identity. The first hardware test rebooted during completion; stage diagnostics and an explicit camera-start correction were added. Subsequent upright-face tests detected and aligned a real face, finished audio and cleared the card; see the acceptance record for the tested geometry and observation limits.
 
 ## Completion modules
 
 Completion begins with a 45° upward head tilt (pitch −π/4 radians) over 1.5 seconds, including when no face is detected. The MOD waits for this movement before starting camera detection. Horizontal tracking preserves this pitch. The head returns to neutral after the announcement.
 
-Horizontal tracking is now limited to ±30°, with adjustments capped at 10° per step. Positive detections were reported with the 45° tilt, but physical alignment and horizontal direction still need confirmation.
+Horizontal tracking is now limited to ±30°, with adjustments capped at 10° per step. Upright centered and off-center faces at roughly 60 cm were detected with the 45° tilt; off-center tests converged toward the image center.
 
-Current experimental detector: Espressif HumanFaceDetect 0.5.0 (MSR/MNP), running on the ESP32-S3 with ESP-DL 3.3.13. The model is embedded in flash. The MOD cycles through four orientations when no face is found, then keeps the successful orientation for confirmation. Coordinates are mapped back to the camera before moving. Real-face accuracy still requires device verification. This does not establish which model a particular factory firmware uses.
+Current experimental detector: Espressif HumanFaceDetect 0.5.0 (MSR/MNP), running on the ESP32-S3 with ESP-DL 3.3.13. The model is embedded in flash. The MOD cycles through four orientations when no face is found, then keeps the successful orientation for confirmation. Coordinates are mapped back to the camera before moving. Detection is sensitive to distance/posture: close, sideways faces previously failed; upright faces around 60 cm succeeded. This does not establish which model a particular factory firmware uses.
 
 - `flow-runner.js`: injected display/completion handlers, timers, duplicate suppression, generation guards and dismissal; reusable for other flows.
 - `completion.js`: explicit camera start/capture/stop, two stable detections, bounded yaw ±30°, local native face inference, bundled WAV playback, and optional stage diagnostics.
@@ -82,7 +82,7 @@ npm run test:research
 npm exec -- biome check mods/research_companion tools/research-companion
 ```
 
-Test reconnection by stopping the service with Ctrl+C, observing Mac disconnected, then restarting it. A restart begins a new empty service session; it does not restore the previous task. For localhost tests use the default CLI URL; an alternate service uses `--url http://HOST:PORT`. The CLI token can also come from `STACKCHAN_COMPANION_TOKEN` instead of a config file.
+Test reconnection by stopping the service with Ctrl+C, observing Mac disconnected, then restarting it. With --config, restart restores the persisted task, revision and service identity. For localhost tests use the default CLI URL; an alternate service uses `--url http://HOST:PORT`. The CLI token can also come from `STACKCHAN_COMPANION_TOKEN` instead of a config file.
 
 To restore the greeting:
 
@@ -104,7 +104,7 @@ npm run mod -- mods/jyos_hello/manifest.json --port /dev/cu.usbmodem101
 - New tasks start with sequence 1 and confirming/gathering. Only one active task is allowed. Sequence numbers increase; gaps are allowed.
 - Exact retries receive `duplicate: true`. Stale, conflicting, retired-task, and busy-task events return 409 without changing state.
 - Event replies acknowledge Mac-service acceptance, **not robot rendering or physical action**.
-- State is memory-only. Session capacity is 128 task IDs without eviction; restart begins a new session. Cross-restart replay protection and persistent completion deduplication belong to the next increment.
+- Configured state persists before acknowledgement/publication. Capacity is 128 task IDs without eviction; restart preserves the session. Robot completion attempts use a separate bounded 16-ID preference history.
 
 ## Screen troubleshooting
 
@@ -167,3 +167,7 @@ The installer preserves existing local settings and registers exact `research-ag
 Reload/start a trusted JYOS Claude session after installation. Direct launcher runs set an environment marker to prevent duplicate hook notifications. Local settings, hook-state metadata and configured service state are private machine files; they must remain ignored. Removing only the installed commands from `.claude/settings.local.json` disables this integration while preserving other hooks.
 
 With `--config`, the Mac service persists its snapshot and retired task IDs in `.service-state.json` beside the config. Restart resumes the same task/service identity. State is written before event acknowledgement or publication to polling robots; write failure returns 503 and leaves the previous state intact. This supports service restart, not a durable delivery queue. The bounded 128-task capacity remains an explicit maintenance limit.
+
+## Acceptance and runtime connection
+
+See the [acceptance record](../../../knowledge_base/feat/research-companion/acceptance.md). Runtime requires Wi-Fi and power, not a USB data connection. USB remains useful for flashing and diagnostics. Keep the Mac service running while Claude researches.

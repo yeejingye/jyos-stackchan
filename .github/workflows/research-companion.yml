@@ -34,5 +34,7 @@ jobs:
         run: npm run test:unit
       - name: Companion integration tests
         run: npm run test:research
+      - name: Firmware architecture checks
+        run: npm run check:architecture
       - name: Companion style checks
         run: npm exec -- biome ci mods/research_companion tools/research-companion
