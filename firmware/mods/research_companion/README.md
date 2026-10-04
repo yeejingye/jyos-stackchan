@@ -127,3 +127,17 @@ npm run mod -- mods/research_companion/manifest.local.json --port /dev/cu.usbmod
 ```
 
 The second command restores normal research triggering. See the [experiment record](../../../knowledge_base/feat/research-companion/on-device-experiment.md) for measured results and rollback.
+
+## Launch real research
+
+Use the dedicated launcher for direct research-agent runs. It reports actual web/write activity, gates readiness on successful agent exit plus a new validated ResearchNote, and keeps research functional when the companion is unavailable. It never hooks unrelated Claude stops. Existing interactive Claude sessions are not automatically instrumented by this command.
+
+```sh
+npm run research:run -- --config mods/research_companion/manifest.local.json \
+  --project /Users/yeejingye/workspace/personal/jyos-system \
+  --output "/Users/yeejingye/JYOS/Workbench/00 Inbox/Research - TOPIC.md" \
+  --question "Your research question" \
+  --source-host docs.m5stack.com --source-host moddable.com
+```
+
+Choose a new Markdown output path inside Workbench. Source-host restrictions are optional exact HTTPS hostnames; metadata validation does not establish factual correctness. The agent receives public-source-only scope and permission to write the selected note. Existing notes and paths escaping Workbench are rejected. Ctrl+C terminates the agent and reports failure/cancellation rather than ready. Notification requests have a 1.5-second deadline; research has a 15-minute execution limit. Private token stays in the ignored local config. No transcript or camera image is retained by this launcher.
