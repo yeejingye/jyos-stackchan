@@ -2,7 +2,7 @@
 
 Local command interface for one **20-minute focus + 5-minute rest** cycle. No LLM, cloud account or API key is needed. The timer works without the Mac or Wi-Fi after installation.
 
-Say **Hi Joy**, wait for the acknowledgement chime, then say **Pomodoro**, **pause**, **resume** or **cancel** within five seconds. Repeat-start preserves the running or paused session. Cancel and the end of rest return to the normal face. Reboot discards the session.
+Say **Hi Joy**, wait for “Hi JY. What can I help you?”, then say **Pomodoro**, **pause**, **resume** or **cancel** within five seconds after the prompt finishes. Repeat-start preserves the running or paused session. Cancel and the end of rest return to the normal face. Reboot discards the session.
 
 The translucent bottom strip shows the countdown. Open the normal drawer for Pomodoro, Pause / resume, Cancel timer and Mute Hi Joy. Mute affects recognition, not the timer.
 
@@ -39,7 +39,7 @@ flowchart LR
   Timer --> Release
 ```
 
-The microphone input is bounded to one inference frame. Recognition drains and ignores input during its own cues, mute and research completion. Speech models and microphone ownership are released before face detection/announcement and reopened afterwards. Research presentation yields throughout focus, rest and pause. Completion admission is persisted before queuing; reboot cannot replay the pending notice.
+The microphone input is bounded to one inference frame. Recognition ignores input during its own cues, mute and research completion. Capture is restarted after playback. Speech models and microphone ownership are released before face detection/announcement and reopened afterwards. Research presentation yields throughout focus, rest and pause. Completion admission is persisted before queuing; reboot cannot replay the pending notice.
 
 This first adapter feeds quiet-room microphone PCM directly to ESP-SR; acoustic echo cancellation/noise suppression is not enabled. Live recognition accuracy, latency and false activations must pass the MiniSRS acceptance checks before this feature is considered complete. Initialization failure leaves manual controls available.
 

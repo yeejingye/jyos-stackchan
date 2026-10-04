@@ -36,3 +36,15 @@ Inference was moved into a dedicated native worker with a two-frame queue and co
 ### Runtime diagnosis update
 
 The worker test produced a usable backtrace: `dl_convq_queue_bzero` → WakeNet `model_clean` → `joy_voice_worker`. The null-address fault is in the Hi Joy WakeNet reset path, including a reset before first inference. The revised binding avoids WakeNet `clean()` entirely: a used wake engine is destroyed/recreated for a fresh wake session, and MultiNet is not cleaned before it has processed audio. Recognition remains disabled on the robot during this rebuild. The worker isolation also remains, so inference does not block face/timer callbacks.
+
+### Owner feedback: spoken wake acknowledgement
+
+After the WakeNet reset fix, the owner confirmed stable operation and a wake chime, but no response to Pomodoro. The sharp tone was replaced with a lower, smoothly enveloped PCM cue; the owner found it too quiet and requested a spoken prompt instead: **“Hi JY. What can I help you?”**
+
+A fixed, local 2.028-second English WAV now supplies wake acknowledgement; no cloud TTS or LLM is used. The command window opens only after the prompt finishes, with generation guards preventing late authorization if mute/completion interrupts it. Phase-end chimes remain soft PCM cues. Microphone capture is reopened after playback to restore its capture configuration. Thirteen Pomodoro behavior tests pass, including cue shape and asynchronous greeting authorization.
+
+English command recognition remains under investigation. The next diagnostic build reports only aggregate input level/frame timings, with a trial 0.65 MultiNet threshold behind wake authorization. Human recognition accuracy and negative-command acceptance are not yet established.
+
+### Command throughput diagnostic
+
+The owner confirmed the full spoken greeting, but Pomodoro still did not start. Native counters measured up to 179 ms inference for a 32 ms input frame; one command window processed 46 frames and dropped 85. The input-level diagnostic was incorrectly placed in the ignored-input branch, so its zero readings do not establish silent capture. It now measures completed active frames. A new experimental build selects MultiNet’s full-PSRAM loader mode and logs available PSRAM before/after loading. Build and live throughput validation remain pending.

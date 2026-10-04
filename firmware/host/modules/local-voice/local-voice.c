@@ -9,6 +9,9 @@
 #include "freertos/task.h"
 #include "freertos/queue.h"
 #include "freertos/semphr.h"
+#include "esp_timer.h"
+#include "esp_heap_caps.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -33,6 +36,7 @@ typedef struct {
     portMUX_TYPE lock;
     uint32_t generation;
     int result;
+    uint32_t wake_frames, command_frames, dropped_frames, max_inference_us;
 } JoyVoice;
 static JoyVoice *owner;
 
@@ -65,6 +69,7 @@ static void joy_voice_worker(void *argument) {
             mode = frame.mode;
         }
         int result = 0;
+        int64_t started = esp_timer_get_time();
         if (!mode) {
             if (!voice->wake) result = -2;
             else {
@@ -80,6 +85,10 @@ static void joy_voice_worker(void *argument) {
             }
         }
         portENTER_CRITICAL(&voice->lock);
+        uint32_t inference_us = esp_timer_get_time() - started;
+        if (inference_us > voice->max_inference_us) voice->max_inference_us = inference_us;
+        if (mode) voice->command_frames++;
+        else voice->wake_frames++;
         if (result && voice->generation == generation && !voice->result) voice->result = result;
         portEXIT_CRITICAL(&voice->lock);
     }
@@ -132,6 +141,13 @@ void xs_joy_voice_constructor(xsMachine *the) {
     voice->wake = voice->wn->create(wake_name, DET_MODE_90);
     voice->commands = voice->mn->create(command_name, 5000);
     if (!voice->wake || !voice->commands) xsUnknownError("No memory for Joy speech engines");
+    // Keep command weights in PSRAM: flash-backed inference exceeded the
+    // microphone frame interval and dropped most of the spoken command.
+    size_t available = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+    voice->commands = voice->mn->switch_loader_mode(voice->commands, ESP_MN_LOAD_FROM_PSRAM);
+    if (!voice->commands) xsUnknownError("Cannot load command weights into PSRAM");
+    printf("[joy-voice] command PSRAM free before=%u after=%u\n", (unsigned)available,
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
     voice->chunk = voice->wn->get_samp_chunksize(voice->wake);
     if (voice->chunk > JOY_MAX_FRAME_SAMPLES || voice->chunk != voice->mn->get_samp_chunksize(voice->commands) ||
         voice->wn->get_samp_rate(voice->wake) != 16000 || voice->mn->get_samp_rate(voice->commands) != 16000)
@@ -142,6 +158,9 @@ void xs_joy_voice_constructor(xsMachine *the) {
     for (int i = 0; i < 4; i++)
         if (esp_mn_commands_add(i + 1, commands[i]) != ESP_OK) xsUnknownError("Cannot register voice command");
     if (esp_mn_commands_update()) xsUnknownError("Speech model rejected command vocabulary");
+    // Four commands behind an explicit wake window; live negative tests still
+    // must confirm this trial threshold before the feature is released.
+    voice->mn->set_det_threshold(voice->commands, 0.65f);
     voice->queue = xQueueCreate(2, sizeof(JoyFrame));
     voice->done = xSemaphoreCreateBinary();
     if (!voice->queue || !voice->done) xsUnknownError("No memory for voice worker queue");
@@ -174,6 +193,24 @@ void xs_joy_voice_detect(xsMachine *the) {
     portEXIT_CRITICAL(&voice->lock);
     memcpy(frame.samples, data, size);
     // Never wait in the UI callback. Saturation drops input instead of accumulating work.
-    xQueueSend(voice->queue, &frame, 0);
+    if (xQueueSend(voice->queue, &frame, 0) != pdTRUE) {
+        portENTER_CRITICAL(&voice->lock);
+        voice->dropped_frames++;
+        portEXIT_CRITICAL(&voice->lock);
+    }
     xsmcSetInteger(xsResult, result);
+}
+
+void xs_joy_voice_stats(xsMachine *the) {
+    JoyVoice *voice = get_voice(the);
+    portENTER_CRITICAL(&voice->lock);
+    uint32_t wake = voice->wake_frames, commands = voice->command_frames;
+    uint32_t dropped = voice->dropped_frames, longest = voice->max_inference_us;
+    portEXIT_CRITICAL(&voice->lock);
+    xsmcVars(1);
+    xsmcSetNewObject(xsResult);
+    xsmcSetInteger(xsVar(0), wake); xsmcSet(xsResult, xsID("wakeFrames"), xsVar(0));
+    xsmcSetInteger(xsVar(0), commands); xsmcSet(xsResult, xsID("commandFrames"), xsVar(0));
+    xsmcSetInteger(xsVar(0), dropped); xsmcSet(xsResult, xsID("droppedFrames"), xsVar(0));
+    xsmcSetInteger(xsVar(0), longest / 1000); xsmcSet(xsResult, xsID("maxInferenceMs"), xsVar(0));
 }

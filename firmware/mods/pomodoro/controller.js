@@ -1,4 +1,6 @@
+import Resource from 'Resource'
 import { Emotion } from 'face-state'
+import { createChime } from 'pomodoro-chime'
 import { CommandWindow } from 'pomodoro-command-window'
 import { createTimerStrip } from 'pomodoro-presentation'
 import { PomodoroTimer } from 'pomodoro-timer'
@@ -26,24 +28,26 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
   const window = new CommandWindow({
     now,
     execute: (command) => controller.command(command),
-    acknowledge: () => chime(880),
+    acknowledge: () => cue(new Resource('wake-ready.wav')),
   })
-  const chime = (hz) => {
+  const cue = (buffer) => {
     audioDepth += 1
     adapter?.suspend(true)
     audio = audio
-      .then(() => robot.audio.tone(hz, 120, 0.2))
+      .then(() => robot.audio.playAudio(buffer))
       .catch((error) => trace(`[pomodoro] chime: ${error}\n`))
       .then(() => {
         audioDepth -= 1
         if (!audioDepth) adapter?.suspend(false)
       })
+    return audio
   }
+  const chime = (hz) => cue(createChime(hz))
   const render = (events) => {
     for (const event of events) {
       trace(`[pomodoro] ${event}\n`)
       if (event === 'started') onStart()
-      if (event === 'rest' || event === 'finished') chime(event === 'rest' ? 660 : 880)
+      if (event === 'rest' || event === 'finished') chime(event === 'rest' ? 523 : 659)
     }
     const snapshot = timer.snapshot()
     strip.update(snapshot)
@@ -83,9 +87,15 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     attachVoice(value) {
       adapter = value
     },
-    suspendCompletion(value) {
-      window.setSuspended(value)
-      adapter?.releaseForCompletion(value)
+    async suspendCompletion(value) {
+      if (value) {
+        window.setSuspended(true)
+        await audio.catch(() => {})
+        adapter?.releaseForCompletion(true)
+      } else {
+        adapter?.releaseForCompletion(false)
+        window.setSuspended(false)
+      }
     },
     setMuted(value) {
       window.setMuted(value)
@@ -94,6 +104,7 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     },
     close() {
       closed = true
+      window.setMuted(true)
       Timer.clear(ticker)
       adapter?.close()
       adapter = undefined

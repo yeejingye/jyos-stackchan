@@ -109,11 +109,11 @@ export function onContextCreated(robot) {
           runner.dismiss()
           return
         }
-        pomodoro.suspendCompletion(true)
+        await pomodoro.suspendCompletion(true)
         try {
           await definition.complete(snapshot, current)
         } finally {
-          pomodoro.suspendCompletion(false)
+          await pomodoro.suspendCompletion(false)
         }
       },
     })
@@ -196,7 +196,7 @@ export function onContextCreated(robot) {
       }
     },
   })
-  if (config.joyVoice?.enabled !== false) attachLocalVoice(robot, pomodoro)
+  if (config.joyVoice?.enabled !== false) attachLocalVoice(robot, pomodoro, config.joyVoice)
   const offline = (text = 'Mac disconnected') => {
     connected = false
     if (pomodoro.foreground) return

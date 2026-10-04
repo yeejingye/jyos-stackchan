@@ -10,13 +10,16 @@ export class CommandWindow {
     this.muted = false
     this.suspended = false
     this.deadline = undefined
+    this.generation = 0
   }
   setMuted(value) {
     this.muted = !!value
+    this.generation += 1
     this.deadline = undefined
   }
   setSuspended(value) {
     this.suspended = !!value
+    this.generation += 1
     this.deadline = undefined
   }
   get listening() {
@@ -24,8 +27,18 @@ export class CommandWindow {
   }
   wake() {
     if (this.muted || this.suspended) return false
-    this.deadline = this.now() + this.windowMs
-    this.acknowledge()
+    const generation = ++this.generation
+    this.deadline = undefined
+    const arm = () => {
+      if (generation === this.generation && !this.muted && !this.suspended) this.deadline = this.now() + this.windowMs
+    }
+    try {
+      const pending = this.acknowledge()
+      if (pending && typeof pending.then === 'function') pending.then(arm, () => {})
+      else arm()
+    } catch {
+      return false
+    }
     return true
   }
   command(value) {

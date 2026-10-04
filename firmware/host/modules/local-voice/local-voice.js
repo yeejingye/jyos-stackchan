@@ -9,6 +9,9 @@ export default class extends Native('xs_joy_voice_destructor') {
   get chunkSamples() {
     return native('xs_joy_voice_chunk').call(this)
   }
+  get stats() {
+    return native('xs_joy_voice_stats').call(this)
+  }
   detect(buffer, commandMode) {
     return native('xs_joy_voice_detect').call(this, buffer, commandMode)
   }

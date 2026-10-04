@@ -1,5 +1,7 @@
 {
+  "data": { "*": "./assets/wake-ready.wav" },
   "modules": {
+    "pomodoro-chime": "./chime",
     "pomodoro-timer": "./timer",
     "pomodoro-command-window": "./command-window",
     "pomodoro-deferred-completion": "./deferred-completion",

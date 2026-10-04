@@ -81,3 +81,36 @@ test('mute and own-audio suspension clear command authorization', () => {
   window.setSuspended(false)
   assert.equal(window.command('pause'), false)
 })
+
+test('spoken greeting finishes before the complete command window opens', async () => {
+  let time = 0
+  let finish
+  const greeting = new Promise((resolve) => {
+    finish = resolve
+  })
+  const window = new CommandWindow({ now: () => time, execute: () => {}, acknowledge: () => greeting })
+  window.wake()
+  time = 4000
+  assert.equal(window.listening, false)
+  finish()
+  await greeting
+  assert.equal(window.listening, true)
+  time = 8999
+  assert.equal(window.listening, true)
+  time = 9000
+  assert.equal(window.listening, false)
+})
+
+test('mute during a pending greeting prevents late command authorization', async () => {
+  let finish
+  const greeting = new Promise((resolve) => {
+    finish = resolve
+  })
+  const window = new CommandWindow({ now: () => 0, execute: () => assert.fail('muted'), acknowledge: () => greeting })
+  window.wake()
+  window.setMuted(true)
+  window.setMuted(false)
+  finish()
+  await greeting
+  assert.equal(window.listening, false)
+})

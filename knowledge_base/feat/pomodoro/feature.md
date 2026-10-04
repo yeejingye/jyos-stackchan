@@ -1,6 +1,6 @@
 # Voice-controlled Pomodoro — MiniSRS
 
-Specification baseline 0.2 · 2026-10-04 · Owner authorised implementation after readiness review.
+Specification baseline 0.3 · 2026-10-04 · Owner authorised implementation after readiness review.
 
 ## Feature record
 
@@ -9,7 +9,7 @@ Specification baseline 0.2 · 2026-10-04 · Owner authorised implementation afte
 | Feature ID | pomodoro |
 | Lifecycle | Implemented; live acceptance in progress |
 | Branch | spec/hi-joy-voice-activation |
-| Publication | Spec and timer checkpoints pushed; voice integration checkpoint pending |
+| Publication | Spec, timer and experimental voice checkpoints pushed; live fixes continue |
 | Hardware | User's M5StackChan CoreS3 |
 | Dependencies | Shared Hi Joy activation, bounded command recognition, timer, face-preserving UI |
 | Release impact | Minor; opt-in CoreS3 voice capability |
@@ -84,7 +84,7 @@ Owner confirmed returning directly to normal mode after reboot. Do not restore o
 ## Implementation defaults accepted by proceeding with the plan
 
 - Pomodoro owns its countdown display; research cannot replace it while active.
-- Recognition uses a five-second window after Hi Joy, with a short acknowledgement chime. Unknown commands expire without changing timer state.
+- Recognition uses a five-second window after Hi Joy, after the locally spoken prompt “Hi JY. What can I help you?” finishes. The owner replaced the wake chime with speech during live testing. Unknown commands expire without changing timer state.
 - Touch/drawer controls expose start, pause/resume, cancel and microphone mute. Muting capture does not stop a running timer.
 - Deferred notices remain silent after reboot, preserving completion replay protection.
 - Defer at most the latest research completion in memory; older pending notices are superseded. Admit a completion through the existing freshness gate when it arrives, persisting its deduplication marker immediately. Keep that admitted notice in volatile memory until normal completion/cancellation, including a long pause. Release once after returning to normal mode. Reboot loses the pending notice and cannot replay it.
