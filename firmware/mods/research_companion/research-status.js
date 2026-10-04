@@ -65,6 +65,27 @@ export class ResearchState {
     this.tasks = new Set()
   }
 
+  serialize() {
+    return { version: 1, snapshot: { ...this.snapshot }, tasks: [...this.tasks] }
+  }
+
+  static restore(record) {
+    if (
+      record?.version !== 1 ||
+      !validateSnapshot(record.snapshot) ||
+      !Array.isArray(record.tasks) ||
+      record.tasks.length > 128 ||
+      new Set(record.tasks).size !== record.tasks.length ||
+      record.tasks.some((id) => typeof id !== 'string' || !/^[a-zA-Z0-9_-]{1,80}$/.test(id)) ||
+      (record.snapshot.taskId && !record.tasks.includes(record.snapshot.taskId))
+    )
+      throw new Error('Invalid persisted companion state')
+    const state = new ResearchState(record.snapshot.serviceId)
+    state.snapshot = { ...record.snapshot }
+    state.tasks = new Set(record.tasks)
+    return state
+  }
+
   accept(event, now = Date.now()) {
     const invalid = validateEvent(event)
     if (invalid) return { status: 400, error: invalid }

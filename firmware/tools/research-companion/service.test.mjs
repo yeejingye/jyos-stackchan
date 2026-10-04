@@ -4,6 +4,61 @@ import { createCompanionServer } from './service.mjs'
 
 const token = 'test-token-not-for-production'
 
+test('polls cannot observe an event until persistence has completed', async (t) => {
+  let release, entered
+  const writing = new Promise((resolve) => {
+    entered = resolve
+  })
+  const request = await fixture(t, {
+    saveState: () => {
+      entered()
+      return new Promise((resolve) => {
+        release = resolve
+      })
+    },
+  })
+  const pending = request('/v1/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ version: 1, taskId: 'one', sequence: 1, phase: 'gathering' }),
+  })
+  await writing
+  assert.equal((await (await request('/v1/state')).json()).phase, 'idle')
+  release()
+  assert.equal((await pending).status, 200)
+  assert.equal((await (await request('/v1/state')).json()).phase, 'gathering')
+})
+
+test('event persistence precedes acknowledgement; failed writes roll back and retries remain valid', async (t) => {
+  let fail = true,
+    saved
+  const request = await fixture(t, {
+    saveState: async (record) => {
+      if (fail) throw new Error('disk full')
+      saved = record
+    },
+  })
+  const event = { version: 1, taskId: 'persistent', sequence: 1, phase: 'gathering' }
+  const post = () =>
+    request('/v1/events', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(event),
+    })
+  assert.equal((await post()).status, 503)
+  assert.equal((await (await request('/v1/state')).json()).phase, 'idle')
+  fail = false
+  assert.equal((await post()).status, 200)
+  const restarted = await fixture(t, { stateRecord: saved })
+  assert.equal((await (await restarted('/v1/state')).json()).taskId, 'persistent')
+  const result = await restarted('/v1/events', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...event, sequence: 2, phase: 'ready' }),
+  })
+  assert.equal(result.status, 200)
+})
+
 async function fixture(t, options = {}) {
   const server = createCompanionServer({ token, serviceId: 'test-service', ...options })
   await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))

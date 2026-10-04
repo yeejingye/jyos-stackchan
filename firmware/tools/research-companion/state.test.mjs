@@ -4,6 +4,20 @@ import { ResearchState, SnapshotCursor } from '../../mods/research_companion/res
 
 const event = (sequence, phase, taskId = 'demo') => ({ version: 1, taskId, sequence, phase })
 
+test('persisted state preserves active ownership, completion and retired-task rejection across restart', () => {
+  const state = new ResearchState('persistent-service')
+  state.accept(event(1, 'gathering'))
+  const active = ResearchState.restore(JSON.parse(JSON.stringify(state.serialize())))
+  assert.deepEqual(active.snapshot, state.snapshot)
+  assert.equal(active.accept(event(2, 'ready')).status, 200)
+  const finished = ResearchState.restore(active.serialize())
+  assert.equal(finished.accept(event(2, 'ready')).duplicate, true)
+  assert.equal(finished.accept(event(1, 'gathering', 'new')).status, 200)
+  assert.equal(finished.accept(event(3, 'ready')).status, 409)
+  assert.throws(() => ResearchState.restore({ version: 1, snapshot: state.snapshot, tasks: [] }))
+  assert.throws(() => ResearchState.restore({ version: 1, snapshot: state.snapshot, tasks: ['demo', 'demo'] }))
+})
+
 test('progress and duplicate retries preserve one revision; stale/conflicting events do not mutate state', () => {
   const state = new ResearchState('server-a')
   assert.equal(state.accept(event(1, 'gathering'), 100).status, 200)

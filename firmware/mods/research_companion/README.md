@@ -155,3 +155,15 @@ npm run research:event -- --config mods/research_companion/manifest.local.json -
 ```
 
 Its card clears after five seconds. Timer scheduling itself is outside this demonstration. New definitions supply display, cleanup, completion and expiry; the runner has no research-specific default message. Cancellation keeps ownership until hardware cleanup ends, including neutral return and torque release.
+
+## Interactive Claude integration
+
+```sh
+npm run research:install-hooks -- --project /Users/yeejingye/workspace/personal/jyos-system --config /Users/yeejingye/workspace/personal/stack-chan/firmware/mods/research_companion/manifest.local.json
+```
+
+The installer preserves existing local settings and registers exact `research-agent` start/stop matching. Tool hooks only process identities opened by that start hook. Unrelated Claude tools/stops do not emit events. The start hook adds a completion-marker contract; success requires that explicit marker, a successful source tool, a new note observed before/after its Write, and valid review/provenance metadata. A stop with no valid output emits failure. Notification errors never block Claude or change its tool permissions. This integration currently validates the public-source research-note profile; private-context research needs its own explicit source/access policy.
+
+Reload/start a trusted JYOS Claude session after installation. Direct launcher runs set an environment marker to prevent duplicate hook notifications. Local settings, hook-state metadata and configured service state are private machine files; they must remain ignored. Removing only the installed commands from `.claude/settings.local.json` disables this integration while preserving other hooks.
+
+With `--config`, the Mac service persists its snapshot and retired task IDs in `.service-state.json` beside the config. Restart resumes the same task/service identity. State is written before event acknowledgement or publication to polling robots; write failure returns 503 and leaves the previous state intact. This supports service restart, not a durable delivery queue. The bounded 128-task capacity remains an explicit maintenance limit.

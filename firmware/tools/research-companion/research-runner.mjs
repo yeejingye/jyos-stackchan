@@ -177,7 +177,11 @@ export async function runResearch({
     prompt,
   ]
   await run.phase('confirming', 'Starting research')
-  const child = spawn(claude, args, { cwd: project, stdio: ['ignore', 'pipe', 'pipe'] })
+  const child = spawn(claude, args, {
+    cwd: project,
+    stdio: ['ignore', 'pipe', 'pipe'],
+    env: { ...process.env, STACKCHAN_RESEARCH_LAUNCHER: '1' },
+  })
   const abort = () => child.kill('SIGTERM')
   signal?.addEventListener('abort', abort, { once: true })
   const timer = setTimeout(abort, 15 * 60 * 1000)
