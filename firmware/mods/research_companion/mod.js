@@ -1,5 +1,8 @@
 import { ATTENTION_YAW_LIMIT, announce, COMPLETION_PITCH, companionRequest, findFace } from 'companion-completion'
+import { CompletionGate } from 'companion-completion-gate'
+import { FlowRegistry } from 'companion-flow-registry'
 import { FlowRunner } from 'companion-flow-runner'
+import { timerFlow } from 'companion-timer-flow'
 import { Emotion } from 'face-state'
 import { Request } from 'http'
 import config from 'mod/config'
@@ -15,7 +18,6 @@ export function onContextCreated(robot) {
   const settings = config.researchCompanion ?? {}
   const cursor = new SnapshotCursor()
   let phase = 'idle'
-  let observedTask
   const card = createStatusCard()
   card.content.visible = false
   robot.ui.addEffect(card.content, 'research-status')
@@ -24,10 +26,10 @@ export function onContextCreated(robot) {
   let watchdog
   let pulse = false
 
-  const show = (text, emotion, displayPhase = 'setup') => {
+  const show = (text, emotion, displayPhase = 'setup', title) => {
     card.content.visible = true
     robot.face.setEmotion(emotion)
-    card.update(text, displayPhase)
+    card.update(text, displayPhase, title)
   }
   const hide = () => {
     card.content.visible = false
@@ -36,15 +38,16 @@ export function onContextCreated(robot) {
     robot.face.setEyeOpen('right', 1)
     if (runner?.key) void companionRequest(settings, '/v1/diagnostics?stage=cleared').catch(() => {})
   }
-  const showPhase = (text, value) => {
+  const showPhase = (text, value, title) => {
     const presentation = PRESENTATION[value] ?? { text: 'Looking for you...', emotion: 'NEUTRAL' }
-    show(text || presentation.text, Emotion[presentation.emotion], value)
+    show(text || presentation.text, Emotion[presentation.emotion], value, title)
   }
   let consumed = []
   try {
     consumed = JSON.parse(Preference.get('jyos', 'completed') ?? '[]')
   } catch {}
   if (!Array.isArray(consumed)) consumed = []
+  const gate = new CompletionGate({ consumed, save: (ids) => Preference.set('jyos', 'completed', JSON.stringify(ids)) })
   const bounded = (operation, ms) =>
     new Promise((resolve, reject) => {
       const timeout = Timer.set(() => reject(new Error('Hardware operation timed out')), ms)
@@ -59,20 +62,30 @@ export function onContextCreated(robot) {
         },
       )
     })
-  const runner = new FlowRunner({
+  const flows = new FlowRegistry({
+    Runner: FlowRunner,
     schedule: (callback, ms) => Timer.set(callback, ms),
     cancel: (timer) => Timer.clear(timer),
+    onError: (error) => trace(`[companion] completion failed: ${error}\n`),
+  })
+  const runner = flows.runner
+  const register = (id, definition) =>
+    flows.register(id, {
+      ...definition,
+      complete: async (snapshot, current) => {
+        if (!gate.consume(snapshot)) {
+          runner.dismiss()
+          return
+        }
+        await definition.complete(snapshot, current)
+      },
+    })
+  register('timer', timerFlow({ show: showPhase, hide }))
+  register('research', {
     show: showPhase,
     hide,
-    onError: (error) => trace(`[companion] completion failed: ${error}\n`),
-    complete: async (snapshot, current) => {
-      if (consumed.includes(snapshot.taskId) || observedTask !== snapshot.taskId) {
-        runner.dismiss()
-        return
-      }
-      // Consume before hardware effects: reconnect/reboot must not replay speech.
-      consumed = [...consumed.slice(-15), snapshot.taskId]
-      Preference.set('jyos', 'completed', JSON.stringify(consumed))
+    readyText: 'Research note ready for review',
+    complete: async (_snapshot, current) => {
       let active = true
       let attentionActive = true
       const valid = () => active && current()
@@ -117,14 +130,12 @@ export function onContextCreated(robot) {
         }
       }
       active = false
-      if (current()) {
-        try {
-          await bounded(robot.motion.setPose({ rotation: { y: 0, p: 0, r: 0 } }, 1.5), 2000)
-        } catch {}
-        try {
-          await bounded(robot.motion.setTorque(false), 2000)
-        } catch {}
-      }
+      try {
+        await bounded(robot.motion.setPose({ rotation: { y: 0, p: 0, r: 0 } }, 1.5), 2000)
+      } catch {}
+      try {
+        await bounded(robot.motion.setTorque(false), 2000)
+      } catch {}
     },
   })
   const offline = (text = 'Mac disconnected') => {
@@ -178,8 +189,8 @@ export function onContextCreated(robot) {
             }
             cursor.accept(snapshot)
             phase = snapshot.phase
-            if (!['idle', 'ready', 'failed'].includes(phase)) observedTask = snapshot.taskId
-            runner.apply(snapshot)
+            gate.observe(snapshot)
+            flows.apply(snapshot)
             connected = true
           } catch {
             offline(status === 401 ? 'Check shared token' : 'Mac disconnected')

@@ -90,7 +90,7 @@ export async function findFace(robot, settings, current, show) {
         const oriented = orientFrame(frame.buffer, 176, 144, orientation)
         detection = { face: cameraFace(detector.detect(oriented.buffer, oriented.width, oriented.height), orientation) }
         trace(
-          `[companion] local face=${!!detection.face} orientation=${orientation * 90} inferenceMs=${detector.inferenceMs}\n`,
+          `[companion] local face=${JSON.stringify(detection.face)} orientation=${orientation * 90} inferenceMs=${detector.inferenceMs}\n`,
         )
       } finally {
         frame?.close?.()
@@ -107,6 +107,7 @@ export async function findFace(robot, settings, current, show) {
           const nextYaw = Math.max(-ATTENTION_YAW_LIMIT, Math.min(ATTENTION_YAW_LIMIT, yaw + step))
           if (Math.abs(nextYaw - yaw) < 0.005) return moved
           yaw = nextYaw
+          trace(`[companion] attention yaw=${yaw} faceX=${face.x}\n`)
           await robot.motion.setTorque(true)
           if (!current()) break
           reportStage(settings, 'motion-start')

@@ -10,6 +10,7 @@ const { values, positionals } = parseArgs({
     port: { type: 'string', default: '8787' },
     url: { type: 'string', default: 'http://127.0.0.1:8787' },
     task: { type: 'string' },
+    flow: { type: 'string', default: 'research' },
     sequence: { type: 'string' },
     phase: { type: 'string' },
     text: { type: 'string' },
@@ -53,6 +54,7 @@ try {
         ? JSON.stringify({
             version: 1,
             taskId: values.task,
+            flowId: values.flow,
             sequence: Number(values.sequence),
             phase: values.phase,
             ...(values.text !== undefined && { text: values.text }),

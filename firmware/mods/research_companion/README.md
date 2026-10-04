@@ -141,3 +141,17 @@ npm run research:run -- --config mods/research_companion/manifest.local.json \
 ```
 
 Choose a new Markdown output path inside Workbench. Source-host restrictions are optional exact HTTPS hostnames; metadata validation does not establish factual correctness. The agent receives public-source-only scope and permission to write the selected note. Existing notes and paths escaping Workbench are rejected. Ctrl+C terminates the agent and reports failure/cancellation rather than ready. Notification requests have a 1.5-second deadline; research has a 15-minute execution limit. Private token stays in the ignored local config. No transcript or camera image is retained by this launcher.
+
+## Registered flows
+
+The MOD registers separate `research` and `timer` definitions around one shared lifecycle runner. Events omit `flowId` for legacy research or name it explicitly. Unknown flow IDs do not invoke hardware. A task cannot change its flow after starting. Completion requires an observed active task within the preceding five minutes; consumed IDs remain bounded to sixteen and are persisted before effects begin.
+
+The timer demonstration uses the same expiry and duplicate handling, but no camera, motor or audio:
+
+```sh
+npm run research:event -- --config mods/research_companion/manifest.local.json --flow timer --task timer-1 --sequence 1 --phase gathering --text "Timer running"
+# Wait for the robot to show the active timer before completing it.
+npm run research:event -- --config mods/research_companion/manifest.local.json --flow timer --task timer-1 --sequence 2 --phase ready --text "Your timer has finished"
+```
+
+Its card clears after five seconds. Timer scheduling itself is outside this demonstration. New definitions supply display, cleanup, completion and expiry; the runner has no research-specific default message. Cancellation keeps ownership until hardware cleanup ends, including neutral return and torque release.

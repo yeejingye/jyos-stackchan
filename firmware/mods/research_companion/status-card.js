@@ -49,9 +49,9 @@ export function createStatusCard() {
   }
   return {
     content: card,
-    update(text, phase) {
+    update(text, phase, titleOverride) {
       const color = phase === 'ready' ? '#52d99a' : ['failed', 'offline'].includes(phase) ? '#ff927d' : '#65d9ef'
-      title.string = TITLES[phase] ?? 'Research'
+      title.string = titleOverride ?? TITLES[phase] ?? 'Research'
       // Fit two lines in the compact card; retain the full status in the Mac snapshot.
       let detail = text
       const width = 272
