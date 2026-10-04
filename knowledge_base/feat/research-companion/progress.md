@@ -112,3 +112,9 @@ Replaced the large multi-line card with a compact 272×46 translucent status str
 ## Phase-specific working expressions — 2026-10-04
 
 Planning now uses a lightly narrowed, thoughtful gaze; source gathering keeps an attentive open gaze with a brief blink every few seconds; comparison uses a subtle one-eye narrowing; drafting uses a balanced focused squint instead of the sleepy preset. Generic flows reset to open eyes, and the happy completion face and head behavior are unchanged. Biome formatting passed; lint passed with one existing informational notice in an unrelated connectivity test fake. The MOD built, flashed to CoreS3, and its flash digest verified. User review of the new expressions remains pending.
+
+## Integrated merge and feature documentation — 2026-10-04
+
+The final synthetic sequence ran confirming → gathering → comparing → drafting → ready and reported a fresh cleared diagnostic. The owner then authorised pushing and merging. Commit d64fcc58 was already pushed with passing CI. PR #3 merged into codex/research-status at 3639b76c, then both integrated validation runs passed before PR #2 merged into jyos-stackchan at de40965e. Issue #1 is closed and the local checkout was synchronised. Earlier pending-merge statements above are historical checkpoints.
+
+Added a canonical feature specification, a reusable feature template with acceptance records, and generated HTML/Word views. Exports are derived from Markdown and identify its source hash; they are not separate canonical records. This documentation update adds no firmware behaviour.

@@ -1,37 +1,47 @@
 # Architecture overview
 
-## Current, verified system
+Updated 2026-10-04. Delivered research companion baseline: `de40965e` on `jyos-stackchan`.
+
+## Delivered research companion
 
 ```mermaid
 flowchart LR
-  Dev[Mac: npm and Moddable tools] -->|USB upload| Host[StackChan host firmware]
-  Host -->|Runtime capabilities| MOD[jyos_hello MOD]
-  MOD --> UI[Face and speech balloon]
-  MOD --> Motion[Motion controller and servo driver]
-  UI --> Display[Display]
-  Motion --> Motors[Pan and tilt motors]
+  Claude[Claude research agent] --> Adapter[Research launcher and scoped hooks]
+  Adapter --> Mac[Mac status service]
+  Claude --> Note[Saved research note]
+  Note --> Gate[Structure and provenance gate]
+  Gate --> Mac
+  Mac -->|Authenticated Wi-Fi polling| Robot[Research companion MOD]
+  Robot --> UI[Phase expressions and translucent strip]
+  Robot --> Completion[Bounded completion flow]
+  Camera[Robot camera] --> Detector[On-device face detection]
+  Detector --> Completion
+  Completion --> Motion[Pan and tilt]
+  Completion --> Audio[Bundled spoken completion clip]
+  Completion --> Cleanup[Neutral pose and automatic clearing]
 ```
 
-The greeting is displayed text, not spoken audio. Direct poses use radians; `lookAt()` only triggers head movement above a 30-degree gaze threshold. Virtual A/B/C buttons are disabled on this target.
+The Mac runs research, correlates tasks and publishes status. Research-scoped events drive planning, gathering, comparing and drafting expressions. The saved-note gate checks structure and provenance; it does not establish factual accuracy or human review.
 
-Detailed environment, functional, structural, behavioral, and requirement views: [system model](../firmware/mods/jyos_hello/SYSTEM_MODEL.md).
+The robot runs the opt-in local-completion host and research MOD. Completion tilts upward to 45°, searches within bounded motion limits, attempts face alignment and plays the fixed sentence “JY, your research note is ready for review.” It returns to neutral, releases servo torque and clears the ready strip approximately 15 seconds after completion and cleanup. Espressif HumanFaceDetect runs on the robot; camera images stay on the robot. Face location does not identify a person.
 
-## Research companion: implementation and roadmap
+Runtime requires power, Wi-Fi and an awake, reachable Mac. USB is used for deployment and diagnostics. Bearer-authenticated HTTP is unencrypted and intended for a trusted LAN. Persisted completion identifiers limit replay; an interrupted completion attempt can be skipped rather than repeated.
 
-The Mac HTTP status service and robot polling MOD are implemented and authenticated Wi-Fi polling has been observed. Claude events, speech, camera processing, and face tracking in the roadmap below remain planned. [Feature design](feat/research-companion/design.md) contains the implemented protocol sequence.
+The shared flow framework supports independently triggered flows. Research is integrated; the timer example is display-only, not a scheduler.
 
-```mermaid
-flowchart LR
-  Claude[Claude Code research subagent] --> Events[Hooks / research event adapter]
-  Events --> Mac[Mac companion service]
-  Mac -->|Wi-Fi status and reaction commands| Robot[Research companion MOD]
-  Mac --> Speech[Speech generation]
-  Speech -->|Audio over selected supported path| Robot
-  Robot -->|Camera images during completion search| Vision[Face detection on Mac]
-  Vision -->|Bounded head adjustments| Robot
-  Robot --> User[Expression, gesture and spoken completion]
-```
+Current specification and evidence:
 
-The Mac service owns task correlation, connection recovery, and completion deduplication. Optional LLM reactions select from approved expressions/gestures and use real supplied progress. Firmware executes bounded commands. Transport, audio path, camera transfer, and input mapping require design and hardware verification.
+- [Feature specification](feat/research-companion/feature.md)
+- [Detailed design](feat/research-companion/design.md)
+- [Acceptance evidence](feat/research-companion/acceptance.md)
+- [Flow lifecycle](feat/research-companion/flow-lifecycle.md)
 
-Feature scope and acceptance criteria: [research companion](feat/research-companion/README.md).
+## Proposed next capabilities
+
+Acknowledgement, requests for more detail, spoken questions, contextual LLM reactions and further JYOS agent integrations remain proposals. The completion clip is fixed audio, not conversational speech. The current flow does not capture a user's response or create a follow-up Inbox note.
+
+Each independently triggered user-facing module should have its own [feature documentation](feat/README.md): requirements, design, acceptance evidence and progress. Shared infrastructure should be documented once and linked from features.
+
+## Historical greeting-stage model
+
+The earlier `jyos_hello` MOD demonstrated a displayed greeting and direct servo poses. Its [CONSENS-inspired system model](../firmware/mods/jyos_hello/SYSTEM_MODEL.md) records the 2026-10-03 checkpoint. Its status labels describe that checkpoint, not the current research deployment.

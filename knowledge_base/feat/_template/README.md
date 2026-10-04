@@ -25,4 +25,6 @@ What is included, deferred, and dependent on other work?
 
 ## Records
 
-[Design](design.md) · [Progress](progress.md)
+[Specification](feature.md) · [Design](design.md) · [Acceptance](acceptance.md) · [Progress](progress.md)
+
+Generate HTML and Word views with the exporter documented in the [feature index](../README.md). Keep exports derived from feature.md; never maintain their content separately.

@@ -4,6 +4,7 @@ Repository documentation, design decisions, and development evidence. Start here
 
 | Document | Purpose |
 | --- | --- |
+| [Joy overview — HTML](stackchan-overview.html) / [Markdown](stackchan-overview.md) | Identity, executive summary, factory capabilities and added features |
 | [Repository context](repository.md) | Hardware, tools, Git workflow, and boundaries |
 | [Architecture](architecture.md) | Current system and proposed JYOS integration |
 | [Development log](development-log.md) | Important repository-wide milestones |
@@ -13,7 +14,7 @@ Repository documentation, design decisions, and development evidence. Start here
 
 ## Maintenance
 
-- Create `feat/<feature-name>/` from `_template` when planning a feature.
+- Create `feat/<feature-name>/` from `_template` when planning a feature. Maintain its canonical `feature.md` and generate HTML/Word views with the shared exporter; see the [feature record format](feat/README.md#feature-record-format).
 - Update its status, design, decisions, and evidence in the same PR as related code.
 - Record significant milestones, blockers, and scope changes; omit routine command transcripts.
 - Keep planned behavior separate from implemented and observed behavior.

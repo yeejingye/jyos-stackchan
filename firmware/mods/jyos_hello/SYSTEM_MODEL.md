@@ -2,6 +2,8 @@
 
 Version 0.1 · 2026-10-03 · M5StackChan CoreS3 · community host v1.1.0
 
+> Historical greeting-stage baseline. Status labels below refer to this checkpoint. Research status, on-device face detection, spoken completion and automatic clearing were subsequently delivered. See the [current architecture](../../../knowledge_base/architecture.md) and [research feature specification](../../../knowledge_base/feat/research-companion/feature.md). Two-way acknowledgement and conversation remain proposed.
+
 A compact **CONSENS-inspired** model expressed in Markdown and Mermaid. These diagrams adapt the notation for readability; they are not formal CONSENS or SysML interchange files.
 
 **System boundary:** the physical robot and its firmware. The Mac, JYOS, network, and optional AI services are external systems. JYOS architecture is a proposal, not an inspected implementation.
