@@ -143,11 +143,15 @@ void xs_joy_voice_constructor(xsMachine *the) {
     if (!voice->wake || !voice->commands) xsUnknownError("No memory for Joy speech engines");
     // Keep command weights in PSRAM: flash-backed inference exceeded the
     // microphone frame interval and dropped most of the spoken command.
-    size_t available = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-    voice->commands = voice->mn->switch_loader_mode(voice->commands, ESP_MN_LOAD_FROM_PSRAM);
-    if (!voice->commands) xsUnknownError("Cannot load command weights into PSRAM");
-    printf("[joy-voice] command PSRAM free before=%u after=%u\n", (unsigned)available,
-        (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    if (voice->mn->switch_loader_mode) {
+        size_t available = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
+        voice->commands = voice->mn->switch_loader_mode(voice->commands, ESP_MN_LOAD_FROM_PSRAM);
+        if (!voice->commands) xsUnknownError("Cannot load command weights into PSRAM");
+        printf("[joy-voice] command PSRAM free before=%u after=%u\n", (unsigned)available,
+            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    } else {
+        printf("[joy-voice] command loader switch unavailable; using model default\n");
+    }
     voice->chunk = voice->wn->get_samp_chunksize(voice->wake);
     if (voice->chunk > JOY_MAX_FRAME_SAMPLES || voice->chunk != voice->mn->get_samp_chunksize(voice->commands) ||
         voice->wn->get_samp_rate(voice->wake) != 16000 || voice->mn->get_samp_rate(voice->commands) != 16000)

@@ -48,3 +48,5 @@ English command recognition remains under investigation. The next diagnostic bui
 ### Command throughput diagnostic
 
 The owner confirmed the full spoken greeting, but Pomodoro still did not start. Native counters measured up to 179 ms inference for a 32 ms input frame; one command window processed 46 frames and dropped 85. The input-level diagnostic was incorrectly placed in the ignored-input branch, so its zero readings do not establish silent capture. It now measures completed active frames. A new experimental build selects MultiNet’s full-PSRAM loader mode and logs available PSRAM before/after loading. Build and live throughput validation remain pending.
+
+The full-PSRAM experiment faulted at startup with `InstrFetchProhibited`, PC/EXCVADDR zero, consistent with an unavailable function pointer. The manual recovery MOD was restored and flash verified. The loader callback is now checked before calling it; unsupported models retain their default loading mode. Spoken-command acceptance remains open.
