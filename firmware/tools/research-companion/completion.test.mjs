@@ -2,10 +2,29 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { frameStats } from '../../mods/research_companion/__tests__/camera-diagnostics/frame-stats.js'
+import { pixelVariant } from '../../mods/research_companion/__tests__/camera-diagnostics/pixel-variants.js'
 import { copyFrameFragment } from '../../mods/research_companion/camera-fragment.js'
 import { FlowRunner } from '../../mods/research_companion/flow-runner.js'
 import { cameraFace, orientFrame } from '../../mods/research_companion/frame-orientation.js'
 import { canonicalWav } from './completion.mjs'
+
+test('diagnostic pixel variants preserve the source and reversibly transform color and row order', () => {
+  const words = [0xf800, 0x07e0, 0x001f, 0x1234, 0xabcd, 0xffff]
+  const source = new Uint16Array(words).buffer
+  assert.deepEqual([...new Uint16Array(pixelVariant(source, 3, 2))], words)
+  assert.deepEqual(
+    [...new Uint16Array(pixelVariant(source, 3, 2, { mirror: true }))],
+    [0x001f, 0x07e0, 0xf800, 0xffff, 0xabcd, 0x1234],
+  )
+  const swapped = pixelVariant(source, 3, 2, { swapRedBlue: true })
+  assert.deepEqual([...new Uint16Array(swapped)].slice(0, 3), [0x001f, 0x07e0, 0xf800])
+  assert.equal(new Uint16Array(pixelVariant(source, 3, 2, { swapBytes: true }))[0], 0x00f8)
+  for (const options of [{ mirror: true }, { swapBytes: true }, { swapRedBlue: true }]) {
+    assert.deepEqual([...new Uint16Array(pixelVariant(pixelVariant(source, 3, 2, options), 3, 2, options))], words)
+  }
+  assert.deepEqual([...new Uint16Array(source)], words)
+  assert.throws(() => pixelVariant(source, 2, 2), RangeError)
+})
 
 test('upload copies buffer bytes without relying on a buffer slice method', () => {
   const buffer = new ArrayBuffer(6)

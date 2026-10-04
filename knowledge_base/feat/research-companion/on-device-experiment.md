@@ -104,3 +104,13 @@ npm run mod -- mods/research_companion/manifest.local.json --port /dev/cu.usbmod
 ```
 
 Repeat after requesting the user remain in front of the robot: neutral brightness mean/stddev 132/82, RGB means 135/131/127; 45° view 170/72, RGB means 178/169/161. Both previews rendered as full bitmaps; all eight orientation checks returned no face (105–107 ms warm inference). The user confirmed that the 45° view showed their face. Image uprightness and whole-face coverage were not explicitly confirmed. Framing alone no longer explains the result: the next diagnostic should compare live-camera pixel format/color ordering against the native detector input and inspect face scale/quality. The diagnostic completed with FINISHED.
+
+## Pixel-format comparison follow-up
+
+Local SDK inspection confirms the camera converts RGB565BE sensor bytes to RGB565LE when requested; the native detector declares RGB565LE. Added temporary diagnostic copies for byte swapping, red/blue channel swapping, horizontal mirroring and four rotations. Behavioral tests verify source preservation and reversible independent transforms; all 19 companion tests pass.
+
+The first device run stopped reporting after normal-color unmirrored 0° and 90° checks (both no face; 248/105 ms). The remaining variants did not complete, and the cause of the stall is unknown. The robot then stopped responding to esptool; restoration and a revised diagnostic upload both failed with “No serial data received.” A physical restart was requested. The revised MOD reduces overlapping preview memory and removes short timer waits, but has only been built, not validated on hardware. Do not treat this comparison as completed or the normal MOD as restored until a verified recovery flash succeeds.
+
+Recovery after physical restart: macOS listed `/dev/cu.usbmodem101`, `npm run scan` identified ESP32-S3, and the normal configured research MOD was successfully installed and verified (71,844 bytes; matching flash digest). The revised pixel comparison remains untested on hardware.
+
+Revised pixel-comparison retry: the diagnostic archive (9,876 bytes) uploaded and verified, but the serial monitor reported USB_UART_CHIP_RESET with DOWNLOAD(USB/UART0), without LOADED or any inference results. Esptool hard reset did not start the app; its ROM run command connected but failed with “Serial data stream stopped.” An alternate DTR state produced no output. The normal research MOD was then restored and verified (71,844 bytes, matching digest). Runtime startup is not confirmed by flash verification. The revised comparison remains unvalidated; no production face-search change was made.

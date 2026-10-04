@@ -1,4 +1,5 @@
 import { frameStats } from 'camera-frame-stats'
+import { pixelVariant } from 'camera-pixel-variants'
 import { createCameraPreviewDialog, prepareCameraPreviewFrame } from 'camera-preview'
 import { cameraFace, orientFrame } from 'companion-frame-orientation'
 import Modules from 'modules'
@@ -33,10 +34,7 @@ async function run(robot) {
   try {
     const FaceDetector = Modules.importNow('local-face-detector')
     detector = new FaceDetector()
-    for (const [name, pitch] of [
-      ['Neutral', 0],
-      ['45deg', -Math.PI / 4],
-    ]) {
+    for (const [name, pitch] of [['45deg', -Math.PI / 4]]) {
       await bounded(robot.motion.setTorque(true), 2000)
       await bounded(robot.motion.setPose({ rotation: { y: 0, p: pitch, r: 0 } }, 1.5), 2000)
       await delay(1500)
@@ -55,14 +53,33 @@ async function run(robot) {
         trace(
           `[camera-diagnostics] ${name} ${frame.width}x${frame.height} ${frame.imageType} bytes=${frame.buffer.byteLength} stats=${JSON.stringify(frameStats(frame.buffer))}\n`,
         )
-        for (let turn = 0; turn < 4; turn++) {
-          const input = orientFrame(frame.buffer, frame.width, frame.height, turn)
-          const face = cameraFace(detector.detect(input.buffer, input.width, input.height), turn)
-          trace(
-            `[camera-diagnostics] ${name} orientation=${turn * 90} face=${JSON.stringify(face)} inferenceMs=${detector.inferenceMs}\n`,
-          )
+        // Copy once, release the native frame, and stop capture before the comparison.
+        const copied = pixelVariant(frame.buffer, frame.width, frame.height)
+        frame.close?.()
+        await robot.camera.stop()
+        for (const [color, options] of [
+          ['normal', {}],
+          ['bytes-swapped', { swapBytes: true }],
+          ['red-blue-swapped', { swapRedBlue: true }],
+          ['bytes-and-red-blue-swapped', { swapBytes: true, swapRedBlue: true }],
+        ]) {
+          for (const mirror of [false, true]) {
+            const pixels = pixelVariant(copied, frame.width, frame.height, { ...options, mirror })
+            for (let turn = 0; turn < 4; turn++) {
+              const input = orientFrame(pixels, frame.width, frame.height, turn)
+              const face = cameraFace(detector.detect(input.buffer, input.width, input.height), turn)
+              trace(
+                `[camera-diagnostics] ${name} color=${color} mirror=${mirror} orientation=${turn * 90} face=${JSON.stringify(face)} inferenceMs=${detector.inferenceMs}\n`,
+              )
+            }
+          }
         }
-        preview = prepareCameraPreviewFrame(frame)
+        preview = prepareCameraPreviewFrame({
+          width: frame.width,
+          height: frame.height,
+          imageType: frame.imageType,
+          buffer: copied,
+        })
       } finally {
         frame?.close?.()
       }
