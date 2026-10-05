@@ -64,9 +64,11 @@ test('prepares an SDKCONFIGPATH directory from MODDABLE tools VERSION', () => {
       moddableDirectory,
       outputDirectory,
       sourceDirectory,
-      additionalDefaults: 'CONFIG_TEST_PROFILE=y\n',
+      additionalDefaults: 'CONFIG_TEST_PROFILE=y\nCONFIG_SPIRAM=n\n',
     })
     assert.match(readFileSync(result.filePath, 'utf8'), /CONFIG_TEST_PROFILE=y/)
+    assert.equal(count(readFileSync(result.filePath, 'utf8'), 'CONFIG_SPIRAM='), 1)
+    assert.match(readFileSync(result.filePath, 'utf8'), /CONFIG_SPIRAM=n/)
     assert.equal(readFileSync(path.join(sourceDirectory, 'sdkconfig.defaults'), 'utf8'), 'CONFIG_SPIRAM=y\n')
     prepareCoreS3VersionSdkconfig({ moddableDirectory, outputDirectory, sourceDirectory })
     assert.equal(readFileSync(result.filePath, 'utf8'), baseline)

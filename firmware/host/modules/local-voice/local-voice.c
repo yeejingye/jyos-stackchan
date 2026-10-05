@@ -58,6 +58,7 @@ static void joy_voice_worker(void *argument) {
         int recognized = 0;
         size_t bytes = voice->chunk * sizeof(int16_t);
         int64_t started = esp_timer_get_time();
+        unsigned reference_frames = 0;
         // Process a known reference without the microphone, queue loss, or wake window.
         for (size_t offset = 0; offset < voice->reference_size + 16000 * 2 * 2; offset += bytes) {
             memset(frame.samples, 0, bytes);
@@ -66,6 +67,7 @@ static void joy_voice_worker(void *argument) {
                 memcpy(frame.samples, voice->reference + offset, count < bytes ? count : bytes);
             }
             esp_mn_state_t state = voice->mn->detect(voice->commands, frame.samples);
+            reference_frames++;
             if (state == ESP_MN_STATE_DETECTED) {
                 esp_mn_results_t *results = voice->mn->get_results(voice->commands);
                 if (results && results->num > 0) recognized = results->command_id[0];
@@ -80,8 +82,8 @@ static void joy_voice_worker(void *argument) {
         portENTER_CRITICAL(&voice->lock);
         voice->self_test_result = recognized == 5 ? 1 : -1;
         portEXIT_CRITICAL(&voice->lock);
-        printf("[joy-voice] reference-test recognized=%d expected=5 elapsed-ms=%u\n", recognized,
-            (unsigned)((esp_timer_get_time() - started) / 1000));
+        printf("[joy-voice] reference-test recognized=%d expected=5 elapsed-ms=%u audio-ms=%u\n", recognized,
+            (unsigned)((esp_timer_get_time() - started) / 1000), reference_frames * voice->chunk / 16);
     }
     while (xQueueReceive(voice->queue, &frame, portMAX_DELAY) == pdTRUE) {
         if (frame.mode == -1) break;

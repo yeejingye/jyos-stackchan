@@ -82,3 +82,7 @@ The extended window ended with 134/350 decoded/submitted frames and 156 losses. 
 Reference configuration: https://github.com/espressif/esp-sr/blob/76581015af7075681814627a5bb03d2f3f328f8a/test_apps/esp-sr-multinet/sdkconfig.ci.mn5q8_en
 
 Cache-profile validation: clean voice host build succeeded; generated IDF configuration reports instruction cache 0x8000, data cache 0x10000 and data line size 64. All 407 unit tests and 16 Pomodoro tests pass, as do changed-file Biome checks. Firmware installation and runtime reference-speed measurement are in progress.
+
+Cache-only runtime outcome: startup and reference recognition passed; reference wall time improved from approximately 5437 to 4189 ms, but this does not prove real-time processing. The next profile selects 80 MHz PSRAM as in Espressif speech examples, preserving its existing memory type. The reference log now includes processed-audio duration so wall time can be compared directly with input duration. SDK defaults are merged by key, and configuration tests verify replacements are unique and normal builds revert to their baseline. Memory-clock stability and speed remain pending.
+
+80 MHz profile build succeeds; generated IDF settings confirm PSRAM speed 80 and the larger cache. All 407 unit tests pass after the key-based defaults merge. Runtime reference real-time ratio and hardware stability remain pending.

@@ -90,7 +90,12 @@ export function prepareVersionSdkconfig({
   const version = firmwareDescriptorVersion(moddableVersion)
   const sourcePath = path.join(sourceDirectory, 'sdkconfig.defaults')
   const source = readFileSync(sourcePath, 'utf8')
-  const sdkconfig = renderVersionSdkconfig(`${source}\n${additionalDefaults}`, moddableVersion)
+  const overrideKeys = new Set(Array.from(additionalDefaults.matchAll(/^(CONFIG_[A-Z0-9_]+)=/gm), (match) => match[1]))
+  const base = source
+    .split('\n')
+    .filter((line) => !overrideKeys.has(line.split('=')[0]))
+    .join('\n')
+  const sdkconfig = renderVersionSdkconfig(`${base}\n${additionalDefaults}`, moddableVersion)
   const directory = path.join(outputDirectory, 'generated', 'sdkconfig', platformName)
   const filePath = path.join(directory, 'sdkconfig.defaults')
   const partitionFilePath = path.join(directory, 'partitions.csv')
