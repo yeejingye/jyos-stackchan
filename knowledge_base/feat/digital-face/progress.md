@@ -12,4 +12,4 @@ Reduced the Digital face frame accent from bright cyan to a softer teal while pr
 
 ## 2026-10-05 — Further brightness reduction
 
-Reduced the Digital-only frame accent to deep teal (`#12656c`) and set its irises to muted silver-teal (`#9cbac0`). The reusable eye component accepts an optional iris color; existing faces continue using the shared theme palette. This change is limited to Digital and keeps its gaze, blink, eyelid and focus expression behavior. CoreS3 rebuild and device verification are pending.
+Reduced the Digital-only frame accent to deep teal (`#12656c`) and set its irises to muted silver-teal (`#9cbac0`). The reusable eye component accepts an optional iris color; existing faces continue using the shared theme palette. This change is limited to Digital and keeps its gaze, blink, eyelid and focus expression behavior. The voice-enabled CoreS3 build completed; all three firmware images matched during flash verification, and the board responded to the watchdog reset on USB.
