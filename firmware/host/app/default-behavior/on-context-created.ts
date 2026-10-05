@@ -1,5 +1,5 @@
 import type { StackchanAppBehavior } from 'app-behavior'
-import { DogFace, ImageFace, SimpleFace } from 'behaviors/face'
+import { DigitalFace, DogFace, ImageFace, SimpleFace } from 'behaviors/face'
 import type { CameraImageType } from 'camera'
 import { type CameraPreviewFrame, createCameraPreviewDialog, prepareCameraPreviewFrame } from 'camera-preview'
 import { Emoticon, type EmoticonKey } from 'effects/emoticon'
@@ -161,7 +161,15 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
     }
   }
 
-  let faceMode: 'simple' | 'dog' | 'image' = 'simple'
+  const configuredFace = (config as { ui?: { type?: string } }).ui?.type
+  let faceMode: 'simple' | 'dog' | 'image' | 'digital' =
+    configuredFace === 'dog'
+      ? 'dog'
+      : configuredFace === 'image'
+        ? 'image'
+        : configuredFace === 'simple' || configuredFace === 'small-face'
+          ? 'simple'
+          : 'digital'
   let handAnimation: HandAnimationName = 'none'
   let cameraPreviewTimer: ReturnType<typeof Timer.set> | undefined
   const syncFaceMode = (
@@ -172,7 +180,13 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
   const syncHandAnimation = () => robot.ui.setHandAnimation(handAnimation)
   const closeDrawer = () => robot.ui.closeDrawer()
   const createCurrentFace = () =>
-    faceMode === 'dog' ? new DogFace({}) : faceMode === 'image' ? new ImageFace({}) : new SimpleFace({})
+    faceMode === 'dog'
+      ? new DogFace({})
+      : faceMode === 'image'
+        ? new ImageFace({})
+        : faceMode === 'digital'
+          ? new DigitalFace({})
+          : new SimpleFace({})
   const restoreCameraPreview = () => {
     if (cameraPreviewTimer) {
       Timer.clear(cameraPreviewTimer)
@@ -190,10 +204,11 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
     options: [
       { value: 'simple', label: localize('drawer.face.simple') },
       { value: 'dog', label: localize('drawer.face.dog') },
+      { value: 'digital', label: localize('drawer.face.digital') },
       { value: 'image', label: localize('drawer.face.image') },
     ],
     callback: (target, value) => {
-      if (value !== 'simple' && value !== 'dog' && value !== 'image') return
+      if (value !== 'simple' && value !== 'dog' && value !== 'image' && value !== 'digital') return
       faceMode = value
       target.ui.setFace(createCurrentFace())
       const app = target.ui.application as { distribute?: (event: string, payload: unknown) => void } | undefined

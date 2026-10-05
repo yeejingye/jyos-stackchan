@@ -1,6 +1,6 @@
 import type { PreferenceConfig } from 'loadPreference'
 import { createAppControllerApplication } from 'app-controller'
-import { DogFace, SimpleFace, SmallFace } from 'behaviors/face'
+import { DigitalFace, DogFace, SimpleFace, SmallFace } from 'behaviors/face'
 import Camera from 'camera'
 import type {
   ConnectivityCapability,
@@ -144,6 +144,7 @@ export function createStackchanContext(
   ])
   const uiControllers = new Map<string, (param: unknown) => RobotUI>([
     ['dog', (param) => createStackchanUI(new DogFace(), asUIOptions(param))],
+    ['digital', (param) => createStackchanUI(new DigitalFace(), asUIOptions(param))],
     ['simple', (param) => createStackchanUI(new SimpleFace(), asUIOptions(param))],
     [
       'image',
@@ -169,7 +170,7 @@ export function createStackchanContext(
 
   // UI
   const uiPrefs = preferences.ui
-  const uiKey = uiPrefs.type ?? 'simple'
+  const uiKey = uiPrefs.type ?? 'digital'
   const UI = uiControllers.get(uiKey)
 
   if (!Driver || !TTS || !UI) {

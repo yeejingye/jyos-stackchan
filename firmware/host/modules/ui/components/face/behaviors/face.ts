@@ -10,6 +10,7 @@ import { createBlinkMotion } from 'motions/blink'
 import { createBreathMotion } from 'motions/breath'
 import { createSaccadeMotion } from 'motions/saccade'
 import type { FaceMotion } from 'motions/types'
+import { DigitalEyeFrame } from 'parts/digital-eye-frame'
 import { DogEyebrow } from 'parts/dog/eyebrow'
 import { DogMouth } from 'parts/dog/mouth'
 import { DogNose } from 'parts/dog/nose'
@@ -278,6 +279,74 @@ export const SimpleFace: FaceTemplateCtor = FaceBase.template(($: FaceBaseParams
       new Eye({ cx: 30, cy: 33, radius: 8, side: 'left' }),
       new Eye({ cx: 170, cy: 36, radius: 8, side: 'right' }),
       new Mouth({ cx: 100, cy: 88 }),
+    ],
+  }
+})
+
+/** A larger, softly geometric face style for expressive digital companions. */
+export const DigitalFace: FaceTemplateCtor = FaceBase.template(($: FaceBaseParams = {}) => {
+  const left = $.left ?? DEFAULT_FACE_LEFT
+  const top = $.top ?? DEFAULT_FACE_TOP
+  const width = $.width ?? DEFAULT_FACE_WIDTH
+  const height = $.height ?? DEFAULT_FACE_HEIGHT
+  const scaleX = width / DEFAULT_FACE_WIDTH
+  const scaleY = height / DEFAULT_FACE_HEIGHT
+  const eye = (cx: number, cy: number, side: 'left' | 'right') =>
+    new Eye({
+      cx: cx * scaleX,
+      cy: cy * scaleY,
+      shape: 'roundRect',
+      width: 38 * scaleX,
+      height: 48 * scaleY,
+      r: 19 * Math.min(scaleX, scaleY),
+      side,
+      eyelidWidth: 44 * scaleX,
+      eyelidHeight: 56 * scaleY,
+    })
+  return {
+    left,
+    top,
+    width,
+    height,
+    contents: [
+      new DigitalEyeFrame({
+        cx: 48 * scaleX,
+        cy: 42 * scaleY,
+        width: 48 * scaleX,
+        height: 62 * scaleY,
+        radius: 22 * Math.min(scaleX, scaleY),
+      }),
+      new DigitalEyeFrame({
+        cx: 152 * scaleX,
+        cy: 42 * scaleY,
+        width: 48 * scaleX,
+        height: 62 * scaleY,
+        radius: 22 * Math.min(scaleX, scaleY),
+      }),
+      eye(48, 42, 'left'),
+      eye(152, 42, 'right'),
+      new DogEyebrow({
+        cx: 48 * scaleX,
+        cy: 42 * scaleY,
+        side: 'left',
+        canvasWidth: width,
+        canvasHeight: height,
+      }),
+      new DogEyebrow({
+        cx: 152 * scaleX,
+        cy: 42 * scaleY,
+        side: 'right',
+        canvasWidth: width,
+        canvasHeight: height,
+      }),
+      new Mouth({
+        cx: 100 * scaleX,
+        cy: 103 * scaleY,
+        minWidth: 36 * scaleX,
+        maxWidth: 54 * scaleX,
+        minHeight: 6 * scaleY,
+        maxHeight: 26 * scaleY,
+      }),
     ],
   }
 })

@@ -115,6 +115,20 @@ function getEyelidFillOutline(
       path.closePath()
       break
     }
+    case Emotion.DOUBTFUL: {
+      const focusedH = Math.max(closedH, h * 0.12)
+      let h1 = y + (h + focusedH) / 2
+      let h2 = y + focusedH
+      if (side === 'left') {
+        ;[h1, h2] = [h2, h1]
+      }
+      path.moveTo(x, y)
+      path.lineTo(x, h1)
+      path.lineTo(x + w, h2)
+      path.lineTo(x + w, y)
+      path.closePath()
+      break
+    }
     case Emotion.SLEEPY:
       path.rect(x, y, w, h * 0.5 + closedH * 0.5)
       break
