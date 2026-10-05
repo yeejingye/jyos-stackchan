@@ -302,6 +302,7 @@ export const DigitalFace: FaceTemplateCtor = FaceBase.template(($: FaceBaseParam
       side,
       eyelidWidth: 44 * scaleX,
       eyelidHeight: 56 * scaleY,
+      irisColor: 0x9cbac0,
     })
   return {
     left,

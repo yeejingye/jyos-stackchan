@@ -9,3 +9,7 @@ The standard CoreS3 build and voice-enabled CoreS3 build both complete. The voic
 ## 2026-10-05 — Softer accent
 
 Reduced the Digital face frame accent from bright cyan to a softer teal while preserving the eye color and expression. The voice-enabled CoreS3 host rebuilt and all three flashed images matched. The configured companion MOD remained installed; Joy restarted, reconnected to Wi-Fi, loaded WakeNet/MultiNet and reached app behaviors ready.
+
+## 2026-10-05 — Further brightness reduction
+
+Reduced the Digital-only frame accent to deep teal (`#12656c`) and set its irises to muted silver-teal (`#9cbac0`). The reusable eye component accepts an optional iris color; existing faces continue using the shared theme palette. This change is limited to Digital and keeps its gaze, blink, eyelid and focus expression behavior. CoreS3 rebuild and device verification are pending.

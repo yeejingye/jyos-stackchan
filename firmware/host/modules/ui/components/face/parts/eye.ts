@@ -26,6 +26,7 @@ export type EyeOptions = {
   side: FaceEyeKey
   eyelidWidth?: number
   eyelidHeight?: number
+  irisColor?: number
 }
 
 type IrisOptions = {
@@ -35,6 +36,7 @@ type IrisOptions = {
   r: number
   left: number
   top: number
+  color?: number
 }
 
 type EyelidOptions = {
@@ -213,11 +215,11 @@ const Iris = defineShapeTemplate((opts: IrisOptions) => {
 
       onFaceSkin(shape: PositionedShape, palette: FaceSkinPalette) {
         this.#palette = palette
-        shape.skin = palette.primary
+        shape.skin = opts.color === undefined ? palette.primary : getFillSkin(opts.color)
       }
 
       onFaceState(shape: PositionedShape, face: FaceState) {
-        if (this.#palette) return
+        if (this.#palette || opts.color !== undefined) return
         const primary = toPiuColorNumber(face.theme.primary)
         if (primary === this.#primary) return
         this.#primary = primary
@@ -248,6 +250,7 @@ export const Eye = Container.template((opts: EyeOptions) => {
     r: irisRadius,
     left: irisBaseLeft,
     top: irisBaseTop,
+    color: opts.irisColor,
   }) as PositionedContent
 
   return {
