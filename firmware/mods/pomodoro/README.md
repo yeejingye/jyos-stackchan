@@ -54,8 +54,10 @@ npm run mod:build -- mods/research_companion/manifest.json
 
 Specification and live acceptance evidence: [knowledge base](../../../knowledge_base/feat/pomodoro/feature.md).
 
-Models: Espressif ESP-SR 2.5.5; `wn9_hijoy_tts` and `mn6_en` plus its required `fst` language graph, source commit `76581015af7075681814627a5bb03d2f3f328f8a`. Espressif model license is included under `host/modules/local-voice/LICENSE.models.txt` and permits use on Espressif products.
+Models: Espressif ESP-SR 2.5.5; `wn9_hijoy_tts` and experimental `mn7_en` (previously `mn6_en`) plus its required `fst` language graph, source commit `76581015af7075681814627a5bb03d2f3f328f8a`. Espressif model license is included under `host/modules/local-voice/LICENSE.models.txt` and permits use on Espressif products.
 
 With `joyVoice.diagnostics: true`, startup tests Espressif’s reference command audio before starting capture. The face overlay reports the reference result, wake/listening status, recognized command candidates, raw PCM peak and per-window dropped frames. It is not a general speech transcript. A reference pass verifies the native recognizer, not live microphone accuracy.
 
 The opt-in voice host uses a 32 KB instruction cache, 64 KB data cache and 64-byte data lines, following Espressif speech example configurations. The standard host keeps its existing defaults. Larger caches consume additional internal RAM; voice and research-camera coexistence still require hardware acceptance. PSRAM type is unchanged; the experimental voice profile selects 80 MHz PSRAM. Hardware stability and recognition throughput remain under test.
+
+The MultiNet7 comparison uses explicit pronunciations generated with Espressif’s `multinet_g2p.py` and `g2p_en` 2.1.0. Resume uses verb-context pronunciation. The optional voice profile selects the matching English SDK command API; native compilation rejects a mismatched selection. Model loading remains at the default for comparison. Direct probes and live/negative tests must pass before accepting this change.

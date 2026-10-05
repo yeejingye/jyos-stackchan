@@ -9,7 +9,10 @@
       "./assets/joy-reference-pause.pcm",
       "./assets/joy-reference-start-phrase.pcm",
       "./assets/joy-reference-pause-phrase.pcm",
-      "./assets/joy-reference-control.pcm"
+      "./assets/joy-reference-control.pcm",
+      "./assets/joy-reference-resume.pcm",
+      "./assets/joy-reference-cancel.pcm",
+      "./assets/joy-reference-negative.pcm"
     ]
   },
   "platforms": {

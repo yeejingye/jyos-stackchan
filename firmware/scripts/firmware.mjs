@@ -104,7 +104,7 @@ if (!dryRun && deviceName === 'm5stackchan_cores3' && command !== 'mod' && comma
   try {
     const versionSdkconfig = prepareCoreS3VersionSdkconfig({
       additionalDefaults: manifest.endsWith('manifest_m5stackchan_cores3_joy_voice.json')
-        ? 'CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y\nCONFIG_ESP32S3_DATA_CACHE_64KB=y\nCONFIG_ESP32S3_DATA_CACHE_LINE_64B=y\nCONFIG_SPIRAM_SPEED_40M=n\nCONFIG_SPIRAM_SPEED_80M=y\n'
+        ? 'CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y\nCONFIG_ESP32S3_DATA_CACHE_64KB=y\nCONFIG_ESP32S3_DATA_CACHE_LINE_64B=y\nCONFIG_SPIRAM_SPEED_40M=n\nCONFIG_SPIRAM_SPEED_80M=y\nCONFIG_SR_MN_EN_NONE=n\nCONFIG_SR_MN_EN_MULTINET7_QUANT=y\n'
         : '',
     })
     subprocessEnvironment = { ...subprocessEnvironment, SDKCONFIGPATH: versionSdkconfig.directory }

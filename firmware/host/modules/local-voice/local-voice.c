@@ -12,6 +12,11 @@
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
 #include "joy-command-policy.h"
+#include "sdkconfig.h"
+
+#if !defined(CONFIG_SR_MN_EN_MULTINET7_QUANT)
+#error "Joy voice requires the matching MultiNet7 English command API configuration"
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -43,8 +48,8 @@ typedef struct {
     uint32_t wake_frames, command_frames, dropped_frames, max_inference_us;
     const uint8_t *reference;
     size_t reference_size;
-    const uint8_t *command_references[5];
-    size_t command_reference_sizes[5];
+    const uint8_t *command_references[8];
+    size_t command_reference_sizes[8];
     uint32_t native_detections, command_timeouts, delivered_results;
     int self_test_result;
 } JoyVoice;
@@ -88,7 +93,7 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
     voice->mn->clean(voice->commands);
     printf("[joy-voice] reference-test recognized=%d expected=%d accepted=%d elapsed-ms=%u audio-ms=%u\n", recognized,
         expected, accepted, (unsigned)((esp_timer_get_time() - started) / 1000), frames * voice->chunk / 16);
-    return recognized == expected && accepted;
+    return expected == 0 ? !accepted : recognized == expected && accepted;
 }
 
 // The worker owns all inference/reset calls. XS only submits bounded copied frames.
@@ -102,17 +107,25 @@ static void joy_voice_worker(void *argument) {
     int commands_primed = 0;
     if (voice->reference) {
         int passed = joy_reference_test(voice, voice->reference, voice->reference_size, 5);
-        const int expected[] = {1, 2, 1, 2, 5};
-        const char *labels[] = {"pomodoro", "pause", "start-phrase", "pause-phrase", "same-voice-control"};
-        for (int i = 0; i < 5; i++) {
+        const int expected[] = {1, 2, 1, 2, 5, 3, 4, 0};
+        const char *labels[] = {"pomodoro", "pause", "start-phrase", "pause-phrase", "same-voice-control",
+            "resume-verb-context", "cancel", "negative-potato"};
+        for (int i = 0; i < 8; i++) {
             if (voice->command_references[i]) {
                 printf("[joy-voice] probe=%s\n", labels[i]);
                 passed &= joy_reference_test(voice, voice->command_references[i], voice->command_reference_sizes[i], expected[i]);
             }
         }
-        esp_mn_commands_remove("TELL ME A JOKE");
-        esp_mn_commands_remove("START A POMODORO TIMER");
-        esp_mn_commands_remove("PAUSE THE TIMER");
+        const float sweep[] = {0.50f, 0.35f, 0.20f};
+        for (int i = 0; i < 3 && voice->command_references[0]; i++) {
+            voice->mn->set_det_threshold(voice->commands, sweep[i]);
+            printf("[joy-voice] generated-only Pomodoro threshold=%.2f\n", (double)sweep[i]);
+            joy_reference_test(voice, voice->command_references[0], voice->command_reference_sizes[0], 1);
+        }
+        voice->mn->set_det_threshold(voice->commands, JOY_COMMAND_THRESHOLD);
+        esp_mn_commands_remove("tell me a joke");
+        esp_mn_commands_remove("start a pomodoro timer");
+        esp_mn_commands_remove("pause the timer");
         if (esp_mn_commands_update()) printf("[joy-voice] diagnostic vocabulary cleanup failed\n");
         voice->mn->clean(voice->commands);
         commands_primed = 1;
@@ -232,7 +245,7 @@ void xs_joy_voice_constructor(xsMachine *the) {
         voice->reference_size = reference_size;
         voice->self_test_result = 0;
     }
-    for (int i = 0; i < 5; i++) {
+    for (int i = 0; i < 8; i++) {
         if (xsmcArgc > i + 2 && xsmcTypeOf(xsArg(i + 2)) != xsUndefinedType) {
             void *reference;
             xsUnsignedValue reference_size;
@@ -245,9 +258,9 @@ void xs_joy_voice_constructor(xsMachine *the) {
     }
     voice->models = srmodel_load(data);
     char *wake_name = esp_srmodel_filter(voice->models, "wn9", "hijoy");
-    char *command_name = esp_srmodel_filter(voice->models, "mn6", "en");
+    char *command_name = esp_srmodel_filter(voice->models, "mn7", "en");
     char *fst_name = esp_srmodel_filter(voice->models, "fst", NULL);
-    // MultiNet 6/7 also load the FST language graph. Check before entering the native library.
+    // MultiNet7 also loads the FST language graph. Check before entering the native library.
     if (!wake_name || !command_name || !fst_name) xsUnknownError("Missing Joy speech model or FST graph");
     voice->wn = esp_wn_handle_from_name(wake_name);
     voice->mn = esp_mn_handle_from_name(command_name);
@@ -255,30 +268,29 @@ void xs_joy_voice_constructor(xsMachine *the) {
     voice->wake = voice->wn->create(wake_name, DET_MODE_90);
     voice->commands = voice->mn->create(command_name, 5000);
     if (!voice->wake || !voice->commands) xsUnknownError("No memory for Joy speech engines");
-    // Keep command weights in PSRAM: flash-backed inference exceeded the
-    // microphone frame interval and dropped most of the spoken command.
-    if (voice->mn->switch_loader_mode) {
-        size_t available = heap_caps_get_free_size(MALLOC_CAP_SPIRAM);
-        voice->commands = voice->mn->switch_loader_mode(voice->commands, ESP_MN_LOAD_FROM_PSRAM);
-        if (!voice->commands) xsUnknownError("Cannot load command weights into PSRAM");
-        printf("[joy-voice] command PSRAM free before=%u after=%u\n", (unsigned)available,
-            (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
-    } else {
-        printf("[joy-voice] command loader switch unavailable; using model default\n");
-    }
+    // Keep loading mode at its default while comparing model/pronunciation.
+    // The old MN6 loader callback was unavailable; changing this too would
+    // confound the speed comparison and introduce another allocation risk.
+    printf("[joy-voice] command model=%s default loader; free PSRAM=%u internal=%u\n", command_name,
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL));
     voice->chunk = voice->wn->get_samp_chunksize(voice->wake);
     if (voice->chunk > JOY_MAX_FRAME_SAMPLES || voice->chunk != voice->mn->get_samp_chunksize(voice->commands) ||
         voice->wn->get_samp_rate(voice->wake) != 16000 || voice->mn->get_samp_rate(voice->commands) != 16000)
         xsUnknownError("Incompatible speech frame format");
     if (esp_mn_commands_alloc(voice->mn, voice->commands) != ESP_OK) xsUnknownError("Cannot allocate voice commands");
     voice->allocated = 1;
-    const char *commands[] = {"POMODORO", "PAUSE", "RESUME", "CANCEL"};
+    const char *commands[] = {"pomodoro", "pause", "resume", "cancel"};
+    // Espressif multinet_g2p.py, g2p_en 2.1.0. Resume uses verb context,
+    // rather than the isolated-word noun pronunciation (resume/résumé).
+    const char *phonemes[] = {"PnMcDeRb", "PeZ", "RmZoM", "KaNScL"};
     for (int i = 0; i < 4; i++)
-        if (esp_mn_commands_add(i + 1, commands[i]) != ESP_OK) xsUnknownError("Cannot register voice command");
-    if (voice->reference && esp_mn_commands_add(5, "TELL ME A JOKE") != ESP_OK)
+        if (esp_mn_commands_phoneme_add(i + 1, commands[i], phonemes[i]) != ESP_OK)
+            xsUnknownError("Cannot register voice command");
+    if (voice->reference && esp_mn_commands_phoneme_add(5, "tell me a joke", "TfL Mm c qbK") != ESP_OK)
         xsUnknownError("Cannot register reference command");
-    if (voice->reference && (esp_mn_commands_add(1, "START A POMODORO TIMER") != ESP_OK ||
-            esp_mn_commands_add(2, "PAUSE THE TIMER") != ESP_OK))
+    if (voice->reference && (esp_mn_commands_phoneme_add(1, "start a pomodoro timer", "STnRT c PnMcDeRb TiMk") != ESP_OK ||
+            esp_mn_commands_phoneme_add(2, "pause the timer", "PeZ jc TiMk") != ESP_OK))
         xsUnknownError("Cannot register diagnostic phrases");
     if (esp_mn_commands_update()) xsUnknownError("Speech model rejected command vocabulary");
     if (voice->reference) esp_mn_active_commands_print();

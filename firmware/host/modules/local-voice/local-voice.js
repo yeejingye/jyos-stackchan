@@ -10,6 +10,9 @@ export default class extends Native('xs_joy_voice_destructor') {
     this.startPhraseReference = diagnostics ? new Resource('joy-reference-start-phrase.pcm') : undefined
     this.pausePhraseReference = diagnostics ? new Resource('joy-reference-pause-phrase.pcm') : undefined
     this.controlReference = diagnostics ? new Resource('joy-reference-control.pcm') : undefined
+    this.resumeReference = diagnostics ? new Resource('joy-reference-resume.pcm') : undefined
+    this.cancelReference = diagnostics ? new Resource('joy-reference-cancel.pcm') : undefined
+    this.negativeReference = diagnostics ? new Resource('joy-reference-negative.pcm') : undefined
     native('xs_joy_voice_constructor').call(
       this,
       this.models,
@@ -19,6 +22,9 @@ export default class extends Native('xs_joy_voice_destructor') {
       this.startPhraseReference,
       this.pausePhraseReference,
       this.controlReference,
+      this.resumeReference,
+      this.cancelReference,
+      this.negativeReference,
     )
   }
   get chunkSamples() {

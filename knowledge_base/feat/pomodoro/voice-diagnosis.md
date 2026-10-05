@@ -60,3 +60,27 @@ The reported result score is not a sufficient predictor of recognition at anothe
 - Measure/repair sustained real-time inference and integrate the recommended AFE path with verified memory budget. Keep these measurements separate from vocabulary accuracy.
 - Once a model passes direct probes, compare on-device buffered microphone audio with live inference to distinguish acoustic/capture quality from scheduling. Keep audio local unless export is explicitly agreed.
 - Validate native result delivery, timer UI, pause/resume/cancel and false activation on hardware before restoring the five-second product window and completing acceptance.
+
+## MultiNet7 comparison (2026-10-05)
+
+The optional voice profile now packages `mn7_en` at the same pinned ESP-SR source commit and enables `CONFIG_SR_MN_EN_MULTINET7_QUANT`. The native build rejects a mismatched API selection. Explicit phonemes come from the pinned Espressif tool with g2p_en 2.1.0; resume uses verb-context pronunciation. Model loading stays at the default. The packed resource is 3,052,125 bytes. Before queue/task allocation, one startup reports 4,408,464 free PSRAM bytes and 78,315 internal bytes.
+
+At the unchanged 0.65 search/acceptance threshold:
+
+| Probe | Outcome | Wall/audio duration |
+| --- | --- | --- |
+| Official control | ID 5, accepted, score 0.781 | 2114/2400 ms |
+| Generated Pomodoro | No candidate | 5286/5376 ms |
+| Generated Pause | ID 2, accepted, score 0.692 | 1288/1504 ms |
+| Generated Start a Pomodoro timer | No candidate | 5119/5376 ms |
+| Generated Pause the timer | ID 2, accepted, score 0.658 | 1239/1472 ms |
+| Same-voice control | ID 5, accepted, score 0.737 | 1787/1856 ms |
+| Please resume (verb-context clip) | No candidate | 5151/5376 ms |
+| Generated Cancel | ID 4, accepted, score 0.831 | 1366/1536 ms |
+| Start a potato timer (negative) | No accepted command | 5654/5376 ms |
+
+Generated-only Pomodoro search thresholds 0.50, 0.35 and 0.20 also produce no candidate. Live policy is restored to 0.65 before opening the microphone. Rounded-vowel alternatives did not improve the earlier Pomodoro comparison and have been removed. Thus MultiNet7 improves these Pause/Cancel probes and control-clip speed, but does not solve Pomodoro or resume.
+
+A spontaneous live window in the earlier MN7 variant build ends at 363/373 processed/submitted frames with zero queue losses (about 0.32 seconds of unprocessed audio), versus the earlier MN6 backlog. Speech content is not logged, and this is one window, not sustained real-time or word-accuracy acceptance. A requested manual-start + spoken Cancel check will test positive native-to-XS delivery and actual timer UI together. All 407 unit tests and 19 Pomodoro tests pass; optional host/MOD builds and flash digests pass.
+
+Current blockers: Pomodoro/Resume recognition, positive human-command delivery and UI evidence, AFE/capture-intelligibility validation, sustained throughput, full-duration timer/research coexistence and negative activation acceptance. The feature remains experimental and unmerged.
