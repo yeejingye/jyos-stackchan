@@ -3,7 +3,7 @@ import { getStrokeSkin } from 'parts/shape-utils'
 import { defineShapeTemplate } from 'template'
 
 type DigitalEyeFrameOptions = { cx: number; cy: number; width: number; height: number; radius: number }
-const DIGITAL_ACCENT = 0x39dfe7
+const DIGITAL_ACCENT = 0x2ab5bc
 
 /** A subtle theme-aware outline that gives the digital eyes a soft display bezel. */
 export const DigitalEyeFrame = defineShapeTemplate((options: DigitalEyeFrameOptions) => {
