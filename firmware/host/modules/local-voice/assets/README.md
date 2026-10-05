@@ -25,3 +25,7 @@ Additional probes: `joy-reference-resume.pcm` says “Please resume” to disamb
 ## Isolated Tomato command trial
 
 Current diagnostics use `joy-reference-tomato-word.pcm` (Samantha saying Tomato), `joy-reference-tomato-word-uk.pcm` (Daniel saying Tomato), and `joy-reference-potato-word.pcm` (Samantha saying Potato). All use the same 145 words/minute generation, afconvert 16 kHz mono signed 16-bit conversion, and 0.5-second silence prefix. They replace the longer-phrase resources in the bundled diagnostics; historical clips remain in the repository. The active start word is now tomato (`TcMdTb`); diagnostic-only alternate pronunciation is `TcMnTb`. Neither generated probe dispatches a timer event.
+
+## Private recorded-input diagnostics
+
+The optional diagnostic constructor arguments `{ recordedPCM, comparisonPCM }` accept bounded raw 16 kHz mono 16-bit PCM buffers, up to 160,000 bytes each. They replace only diagnostic positive probes; they do not dispatch timer events, save audio, or retrain a model. Recorded buffers require diagnostics mode and remain referenced until native worker shutdown. Decoder text is suppressed for these runs. Use only with explicit owner approval, temporary files outside Git, and deletion of recordings and any generated MOD artifacts after testing. Normal construction does not record or export microphone audio.

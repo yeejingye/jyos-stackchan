@@ -52,6 +52,7 @@ typedef struct {
     size_t command_reference_sizes[8];
     uint32_t native_detections, command_timeouts, delivered_results;
     int self_test_result;
+    int redact_reference_text;
 } JoyVoice;
 static JoyVoice *owner;
 
@@ -85,7 +86,10 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
     }
     if (final_state != ESP_MN_STATE_DETECTING) {
         esp_mn_results_t *results = voice->mn->get_results(voice->commands);
-        if (results)
+        if (results && voice->redact_reference_text)
+            printf("[joy-voice] private-probe-decoder state=%d candidates=%d top-probability=%.3f\n",
+                final_state, results->num, results->num > 0 ? (double)results->prob[0] : 0.0);
+        else if (results)
             printf("[joy-voice] probe-decoder state=%d candidates=%d text=%.255s raw=%.255s top-probability=%.3f\n",
                 final_state, results->num, results->string, results->raw_string,
                 results->num > 0 ? (double)results->prob[0] : 0.0);
@@ -112,7 +116,9 @@ static void joy_voice_worker(void *argument) {
             "resume-verb-context", "cancel", "negative-potato"};
         for (int i = 0; i < 8; i++) {
             if (voice->command_references[i]) {
-                printf("[joy-voice] probe=%s\n", labels[i]);
+                const char *label = voice->redact_reference_text && i == 0 ? "recorded-raw-us-grammar" :
+                    voice->redact_reference_text && i == 2 ? "recorded-gain2-us-grammar" : labels[i];
+                printf("[joy-voice] probe=%s\n", label);
                 passed &= joy_reference_test(voice, voice->command_references[i], voice->command_reference_sizes[i], expected[i]);
             }
         }
@@ -123,9 +129,9 @@ static void joy_voice_worker(void *argument) {
             printf("[joy-voice] alternate pronunciation registration failed\n");
             passed = 0;
         } else {
-            printf("[joy-voice] probe=tomato-us-audio-uk-grammar\n");
+            printf("[joy-voice] probe=%s\n", voice->redact_reference_text ? "recorded-raw-uk-grammar" : "tomato-us-audio-uk-grammar");
             joy_reference_test(voice, voice->command_references[0], voice->command_reference_sizes[0], 1);
-            printf("[joy-voice] probe=tomato-uk-audio-uk-grammar\n");
+            printf("[joy-voice] probe=%s\n", voice->redact_reference_text ? "recorded-gain2-uk-grammar" : "tomato-uk-audio-uk-grammar");
             joy_reference_test(voice, voice->command_references[2], voice->command_reference_sizes[2], 1);
             printf("[joy-voice] probe=negative-potato-uk-grammar\n");
             joy_reference_test(voice, voice->command_references[7], voice->command_reference_sizes[7], 0);
@@ -269,6 +275,7 @@ void xs_joy_voice_constructor(xsMachine *the) {
             voice->command_reference_sizes[i] = reference_size;
         }
     }
+    voice->redact_reference_text = xsmcArgc > 10 && xsmcToBoolean(xsArg(10));
     voice->models = srmodel_load(data);
     char *wake_name = esp_srmodel_filter(voice->models, "wn9", "hijoy");
     char *command_name = esp_srmodel_filter(voice->models, "mn7", "en");
