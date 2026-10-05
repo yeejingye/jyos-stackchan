@@ -5,14 +5,14 @@ export default class extends Native('xs_joy_voice_destructor') {
     super()
     this.models = new Resource('joy-voice-models.bin')
     this.reference = diagnostics ? new Resource('joy-reference-command.pcm') : undefined
-    this.tomatoReference = diagnostics ? new Resource('joy-reference-tomato.pcm') : undefined
+    this.tomatoReference = diagnostics ? new Resource('joy-reference-tomato-word.pcm') : undefined
     this.pauseReference = diagnostics ? new Resource('joy-reference-pause.pcm') : undefined
-    this.startPhraseReference = diagnostics ? new Resource('joy-reference-tomato-uk.pcm') : undefined
+    this.startPhraseReference = diagnostics ? new Resource('joy-reference-tomato-word-uk.pcm') : undefined
     this.pausePhraseReference = diagnostics ? new Resource('joy-reference-pause-phrase.pcm') : undefined
     this.controlReference = diagnostics ? new Resource('joy-reference-control.pcm') : undefined
     this.resumeReference = diagnostics ? new Resource('joy-reference-resume.pcm') : undefined
     this.cancelReference = diagnostics ? new Resource('joy-reference-cancel.pcm') : undefined
-    this.negativeReference = diagnostics ? new Resource('joy-reference-negative.pcm') : undefined
+    this.negativeReference = diagnostics ? new Resource('joy-reference-potato-word.pcm') : undefined
     native('xs_joy_voice_constructor').call(
       this,
       this.models,

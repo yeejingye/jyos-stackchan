@@ -5,14 +5,14 @@
     "*": [
       "../../../dist/voice-models/joy-voice-models.bin",
       "./assets/joy-reference-command.pcm",
-      "./assets/joy-reference-tomato.pcm",
-      "./assets/joy-reference-tomato-uk.pcm",
+      "./assets/joy-reference-tomato-word.pcm",
+      "./assets/joy-reference-tomato-word-uk.pcm",
       "./assets/joy-reference-pause.pcm",
       "./assets/joy-reference-pause-phrase.pcm",
       "./assets/joy-reference-control.pcm",
       "./assets/joy-reference-resume.pcm",
       "./assets/joy-reference-cancel.pcm",
-      "./assets/joy-reference-negative.pcm"
+      "./assets/joy-reference-potato-word.pcm"
     ]
   },
   "platforms": {

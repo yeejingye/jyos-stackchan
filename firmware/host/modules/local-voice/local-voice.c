@@ -108,7 +108,7 @@ static void joy_voice_worker(void *argument) {
     if (voice->reference) {
         int passed = joy_reference_test(voice, voice->reference, voice->reference_size, 5);
         const int expected[] = {1, 2, 1, 2, 5, 3, 4, 0};
-        const char *labels[] = {"start-tomato-timer", "pause", "tomato-uk-audio-us-grammar", "pause-phrase", "same-voice-control",
+        const char *labels[] = {"tomato-word", "pause", "tomato-uk-audio-us-grammar", "pause-phrase", "same-voice-control",
             "resume-verb-context", "cancel", "negative-potato"};
         for (int i = 0; i < 8; i++) {
             if (voice->command_references[i]) {
@@ -117,8 +117,8 @@ static void joy_voice_worker(void *argument) {
             }
         }
         // Diagnostic-only pronunciation comparison. Restore the live vocabulary below.
-        esp_mn_commands_remove("start tomato timer");
-        if (esp_mn_commands_phoneme_add(1, "start tomato timer", "STnRT TcMnTb TiMk") != ESP_OK ||
+        esp_mn_commands_remove("tomato");
+        if (esp_mn_commands_phoneme_add(1, "tomato", "TcMnTb") != ESP_OK ||
             esp_mn_commands_update()) {
             printf("[joy-voice] alternate pronunciation registration failed\n");
             passed = 0;
@@ -130,8 +130,8 @@ static void joy_voice_worker(void *argument) {
             printf("[joy-voice] probe=negative-potato-uk-grammar\n");
             joy_reference_test(voice, voice->command_references[7], voice->command_reference_sizes[7], 0);
         }
-        esp_mn_commands_remove("start tomato timer");
-        if (esp_mn_commands_phoneme_add(1, "start tomato timer", "STnRT TcMdTb TiMk") != ESP_OK ||
+        esp_mn_commands_remove("tomato");
+        if (esp_mn_commands_phoneme_add(1, "tomato", "TcMdTb") != ESP_OK ||
             esp_mn_commands_update()) {
             printf("[joy-voice] live pronunciation restoration failed\n");
             passed = 0;
@@ -293,10 +293,10 @@ void xs_joy_voice_constructor(xsMachine *the) {
         xsUnknownError("Incompatible speech frame format");
     if (esp_mn_commands_alloc(voice->mn, voice->commands) != ESP_OK) xsUnknownError("Cannot allocate voice commands");
     voice->allocated = 1;
-    const char *commands[] = {"start tomato timer", "pause", "resume", "cancel"};
+    const char *commands[] = {"tomato", "pause", "resume", "cancel"};
     // Espressif multinet_g2p.py, g2p_en 2.1.0. Resume uses verb context,
     // rather than the isolated-word noun pronunciation (resume/résumé).
-    const char *phonemes[] = {"STnRT TcMdTb TiMk", "PeZ", "RmZoM", "KaNScL"};
+    const char *phonemes[] = {"TcMdTb", "PeZ", "RmZoM", "KaNScL"};
     for (int i = 0; i < 4; i++)
         if (esp_mn_commands_phoneme_add(i + 1, commands[i], phonemes[i]) != ESP_OK)
             xsUnknownError("Cannot register voice command");

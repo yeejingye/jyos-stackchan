@@ -21,3 +21,7 @@ Additional probes: `joy-reference-resume.pcm` says “Please resume” to disamb
 ### Pronunciation comparison
 
 `joy-reference-tomato-uk.pcm` is a Daniel (British English) 145 words/minute macOS speech probe, generated with say and afconvert, 16 kHz mono signed 16-bit little-endian PCM with 0.5 seconds of leading silence. Diagnostics compare Samantha and Daniel recordings against the official-tool US pronunciation and an alternate tomato vowel using the same Espressif phoneme alphabet (`TcMdTb` versus `TcMnTb`). The alternate grammar is removed and the US grammar restored before live capture. A potato negative probe also runs against the alternate grammar. This tests a pronunciation hypothesis without recording the owner or dispatching timer commands.
+
+## Isolated Tomato command trial
+
+Current diagnostics use `joy-reference-tomato-word.pcm` (Samantha saying Tomato), `joy-reference-tomato-word-uk.pcm` (Daniel saying Tomato), and `joy-reference-potato-word.pcm` (Samantha saying Potato). All use the same 145 words/minute generation, afconvert 16 kHz mono signed 16-bit conversion, and 0.5-second silence prefix. They replace the longer-phrase resources in the bundled diagnostics; historical clips remain in the repository. The active start word is now tomato (`TcMdTb`); diagnostic-only alternate pronunciation is `TcMnTb`. Neither generated probe dispatches a timer event.
