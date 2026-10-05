@@ -8,7 +8,7 @@ Repository license: MIT (see `../LICENSE.models.txt`). Extracted byte SHA-256: `
 
 ## Generated command probes
 
-`joy-reference-pomodoro.pcm` and `joy-reference-pause.pcm` are local macOS Samantha speech probes, generated at 145 words/minute with `say`, converted with `afconvert` to 16 kHz mono signed 16-bit little-endian PCM, and prefixed with 0.5 seconds of silence. They test the registered command vocabulary directly without microphone input or real-time queue pressure. They are synthetic probes, not human recognition acceptance recordings. Diagnostic startup runs them after removing the temporary reference command, never dispatching their results to timer controls. Normal operation does not open these resources.
+`joy-reference-pomodoro.pcm` and `joy-reference-pause.pcm` are local macOS Samantha speech probes, generated at 145 words/minute with `say`, converted with `afconvert` to 16 kHz mono signed 16-bit little-endian PCM, and prefixed with 0.5 seconds of silence. They test the registered command vocabulary directly without microphone input or real-time queue pressure. They are synthetic probes, not human recognition acceptance recordings. Diagnostic startup uses a temporary reference command alongside the probes, removes that command before live listening, and never dispatches probe results to timer controls. Normal operation does not open these resources.
 
 The same generation process also supplies `joy-reference-start-phrase.pcm` (Start a Pomodoro timer), `joy-reference-pause-phrase.pcm` (Pause the timer), and `joy-reference-control.pcm` (Tell me a joke). Temporary phrase aliases are used only during startup probes and removed before live listening. The same-voice control distinguishes generated audio compatibility from command-specific failure.
 
@@ -17,3 +17,7 @@ Additional probes: `joy-reference-resume.pcm` says “Please resume” to disamb
 ## Start Tomato Timer revision
 
 `joy-reference-tomato.pcm` says “Start Tomato Timer”, generated with the same Samantha process above. It replaces the active Pomodoro startup probe. Historical Pomodoro assets remain as diagnostic evidence but are no longer bundled or run. The old threshold sweep is retired. Startup retains pause, control, resume, cancel and near-sounding potato negative probes; the start phrase stays in the live vocabulary after probes finish.
+
+### Pronunciation comparison
+
+`joy-reference-tomato-uk.pcm` is a Daniel (British English) 145 words/minute macOS speech probe, generated with say and afconvert, 16 kHz mono signed 16-bit little-endian PCM with 0.5 seconds of leading silence. Diagnostics compare Samantha and Daniel recordings against the official-tool US pronunciation and an alternate tomato vowel using the same Espressif phoneme alphabet (`TcMdTb` versus `TcMnTb`). The alternate grammar is removed and the US grammar restored before live capture. A potato negative probe also runs against the alternate grammar. This tests a pronunciation hypothesis without recording the owner or dispatching timer commands.

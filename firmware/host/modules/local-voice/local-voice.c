@@ -108,13 +108,33 @@ static void joy_voice_worker(void *argument) {
     if (voice->reference) {
         int passed = joy_reference_test(voice, voice->reference, voice->reference_size, 5);
         const int expected[] = {1, 2, 1, 2, 5, 3, 4, 0};
-        const char *labels[] = {"start-tomato-timer", "pause", "historical-start-phrase", "pause-phrase", "same-voice-control",
+        const char *labels[] = {"start-tomato-timer", "pause", "tomato-uk-audio-us-grammar", "pause-phrase", "same-voice-control",
             "resume-verb-context", "cancel", "negative-potato"};
         for (int i = 0; i < 8; i++) {
             if (voice->command_references[i]) {
                 printf("[joy-voice] probe=%s\n", labels[i]);
                 passed &= joy_reference_test(voice, voice->command_references[i], voice->command_reference_sizes[i], expected[i]);
             }
+        }
+        // Diagnostic-only pronunciation comparison. Restore the live vocabulary below.
+        esp_mn_commands_remove("start tomato timer");
+        if (esp_mn_commands_phoneme_add(1, "start tomato timer", "STnRT TcMnTb TiMk") != ESP_OK ||
+            esp_mn_commands_update()) {
+            printf("[joy-voice] alternate pronunciation registration failed\n");
+            passed = 0;
+        } else {
+            printf("[joy-voice] probe=tomato-us-audio-uk-grammar\n");
+            joy_reference_test(voice, voice->command_references[0], voice->command_reference_sizes[0], 1);
+            printf("[joy-voice] probe=tomato-uk-audio-uk-grammar\n");
+            joy_reference_test(voice, voice->command_references[2], voice->command_reference_sizes[2], 1);
+            printf("[joy-voice] probe=negative-potato-uk-grammar\n");
+            joy_reference_test(voice, voice->command_references[7], voice->command_reference_sizes[7], 0);
+        }
+        esp_mn_commands_remove("start tomato timer");
+        if (esp_mn_commands_phoneme_add(1, "start tomato timer", "STnRT TcMdTb TiMk") != ESP_OK ||
+            esp_mn_commands_update()) {
+            printf("[joy-voice] live pronunciation restoration failed\n");
+            passed = 0;
         }
         voice->mn->set_det_threshold(voice->commands, JOY_COMMAND_THRESHOLD);
         esp_mn_commands_remove("tell me a joke");
