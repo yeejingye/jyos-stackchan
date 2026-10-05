@@ -1,4 +1,5 @@
 import Modules from 'modules'
+import { dispatchRecognition } from 'pomodoro-recognition-result'
 import Time from 'time'
 import Timer from 'timer'
 
@@ -31,7 +32,6 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
     const debug = (message, detail = '') => {
       if (diagnostics) controller.voiceDebug(message, detail)
     }
-    const commands = ['', 'pomodoro', 'pause', 'resume', 'cancel']
     const window = controller.window
     // Diagnostic latency experiment only; product authorization remains five seconds.
     if (diagnostics) window.windowMs = 12000
@@ -91,10 +91,10 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
           engine.reset()
           commandMode = true
         } else if (result > 0) {
-          const accepted = window.command(commands[result])
+          const { command, accepted } = dispatchRecognition(window, result)
           awaitingCommand = false
-          debug(`Heard: ${commands[result] ?? 'unknown'}`, accepted ? 'Command accepted' : 'Command not accepted')
-          trace(`[joy-voice] candidate=${commands[result]} accepted=${accepted}\n`)
+          debug(`Heard: ${command ?? 'unknown'}`, accepted ? 'Command accepted' : 'Command not accepted')
+          trace(`[joy-voice] candidate=${command} accepted=${accepted}\n`)
           if (accepted) reset()
         }
         // The acknowledgement chime suspends input synchronously.

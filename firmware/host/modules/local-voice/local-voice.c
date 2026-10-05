@@ -11,6 +11,7 @@
 #include "freertos/semphr.h"
 #include "esp_timer.h"
 #include "esp_heap_caps.h"
+#include "joy-command-policy.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -42,9 +43,53 @@ typedef struct {
     uint32_t wake_frames, command_frames, dropped_frames, max_inference_us;
     const uint8_t *reference;
     size_t reference_size;
+    const uint8_t *command_references[5];
+    size_t command_reference_sizes[5];
+    uint32_t native_detections, command_timeouts, delivered_results;
     int self_test_result;
 } JoyVoice;
 static JoyVoice *owner;
+
+static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length, int expected) {
+    int16_t samples[JOY_MAX_FRAME_SAMPLES];
+    size_t bytes = voice->chunk * sizeof(int16_t);
+    unsigned frames = 0;
+    int recognized = 0;
+    int accepted = 0;
+    esp_mn_state_t final_state = ESP_MN_STATE_DETECTING;
+    int64_t started = esp_timer_get_time();
+    for (size_t offset = 0; offset < length + 16000 * 2 * 5; offset += bytes) {
+        memset(samples, 0, bytes);
+        if (offset < length) {
+            size_t count = length - offset;
+            memcpy(samples, pcm + offset, count < bytes ? count : bytes);
+        }
+        esp_mn_state_t state = voice->mn->detect(voice->commands, samples);
+        final_state = state;
+        frames++;
+        if (state == ESP_MN_STATE_DETECTED) {
+            esp_mn_results_t *results = voice->mn->get_results(voice->commands);
+            if (results && results->num > 0) {
+                recognized = results->command_id[0];
+                accepted = joy_command_accepted(recognized, results->prob[0]);
+            }
+            break;
+        }
+        if (state == ESP_MN_STATE_TIMEOUT) break;
+        vTaskDelay(1);
+    }
+    if (final_state != ESP_MN_STATE_DETECTING) {
+        esp_mn_results_t *results = voice->mn->get_results(voice->commands);
+        if (results)
+            printf("[joy-voice] probe-decoder state=%d candidates=%d text=%.255s raw=%.255s top-probability=%.3f\n",
+                final_state, results->num, results->string, results->raw_string,
+                results->num > 0 ? (double)results->prob[0] : 0.0);
+    }
+    voice->mn->clean(voice->commands);
+    printf("[joy-voice] reference-test recognized=%d expected=%d accepted=%d elapsed-ms=%u audio-ms=%u\n", recognized,
+        expected, accepted, (unsigned)((esp_timer_get_time() - started) / 1000), frames * voice->chunk / 16);
+    return recognized == expected && accepted;
+}
 
 // The worker owns all inference/reset calls. XS only submits bounded copied frames.
 static void joy_voice_worker(void *argument) {
@@ -56,35 +101,24 @@ static void joy_voice_worker(void *argument) {
     int wake_primed = 0;
     int commands_primed = 0;
     if (voice->reference) {
-        int recognized = 0;
-        size_t bytes = voice->chunk * sizeof(int16_t);
-        int64_t started = esp_timer_get_time();
-        unsigned reference_frames = 0;
-        // Process a known reference without the microphone, queue loss, or wake window.
-        for (size_t offset = 0; offset < voice->reference_size + 16000 * 2 * 2; offset += bytes) {
-            memset(frame.samples, 0, bytes);
-            if (offset < voice->reference_size) {
-                size_t count = voice->reference_size - offset;
-                memcpy(frame.samples, voice->reference + offset, count < bytes ? count : bytes);
+        int passed = joy_reference_test(voice, voice->reference, voice->reference_size, 5);
+        const int expected[] = {1, 2, 1, 2, 5};
+        const char *labels[] = {"pomodoro", "pause", "start-phrase", "pause-phrase", "same-voice-control"};
+        for (int i = 0; i < 5; i++) {
+            if (voice->command_references[i]) {
+                printf("[joy-voice] probe=%s\n", labels[i]);
+                passed &= joy_reference_test(voice, voice->command_references[i], voice->command_reference_sizes[i], expected[i]);
             }
-            esp_mn_state_t state = voice->mn->detect(voice->commands, frame.samples);
-            reference_frames++;
-            if (state == ESP_MN_STATE_DETECTED) {
-                esp_mn_results_t *results = voice->mn->get_results(voice->commands);
-                if (results && results->num > 0) recognized = results->command_id[0];
-                break;
-            }
-            vTaskDelay(1);
         }
         esp_mn_commands_remove("TELL ME A JOKE");
-        esp_mn_commands_update();
+        esp_mn_commands_remove("START A POMODORO TIMER");
+        esp_mn_commands_remove("PAUSE THE TIMER");
+        if (esp_mn_commands_update()) printf("[joy-voice] diagnostic vocabulary cleanup failed\n");
         voice->mn->clean(voice->commands);
         commands_primed = 1;
         portENTER_CRITICAL(&voice->lock);
-        voice->self_test_result = recognized == 5 ? 1 : -1;
+        voice->self_test_result = passed ? 1 : -1;
         portEXIT_CRITICAL(&voice->lock);
-        printf("[joy-voice] reference-test recognized=%d expected=5 elapsed-ms=%u audio-ms=%u\n", recognized,
-            (unsigned)((esp_timer_get_time() - started) / 1000), reference_frames * voice->chunk / 16);
     }
     while (xQueueReceive(voice->queue, &frame, portMAX_DELAY) == pdTRUE) {
         if (frame.mode == -1) break;
@@ -119,7 +153,23 @@ static void joy_voice_worker(void *argument) {
             commands_primed = 1;
             if (state == ESP_MN_STATE_DETECTED) {
                 esp_mn_results_t *results = voice->mn->get_results(voice->commands);
-                if (results && results->num > 0) result = results->command_id[0];
+                if (results && results->num > 0) {
+                    int candidate = results->command_id[0];
+                    float threshold = JOY_COMMAND_THRESHOLD;
+                    if (joy_command_accepted(candidate, results->prob[0])) result = candidate;
+                    printf("[joy-voice] native-detected id=%d probability=%.3f threshold=%.2f accepted=%d\n",
+                        candidate, (double)results->prob[0], (double)threshold, result != 0);
+                    portENTER_CRITICAL(&voice->lock);
+                    voice->native_detections++;
+                    portEXIT_CRITICAL(&voice->lock);
+                }
+            } else if (state == ESP_MN_STATE_TIMEOUT) {
+                portENTER_CRITICAL(&voice->lock);
+                voice->command_timeouts++;
+                portEXIT_CRITICAL(&voice->lock);
+                printf("[joy-voice] native-command-timeout\n");
+                // A timed-out engine must be reset before the next utterance.
+                voice->mn->clean(voice->commands);
             }
         }
         portENTER_CRITICAL(&voice->lock);
@@ -182,6 +232,17 @@ void xs_joy_voice_constructor(xsMachine *the) {
         voice->reference_size = reference_size;
         voice->self_test_result = 0;
     }
+    for (int i = 0; i < 5; i++) {
+        if (xsmcArgc > i + 2 && xsmcTypeOf(xsArg(i + 2)) != xsUndefinedType) {
+            void *reference;
+            xsUnsignedValue reference_size;
+            xsmcGetBufferReadable(xsArg(i + 2), &reference, &reference_size);
+            if (!reference_size || reference_size > 160000 || reference_size % 2)
+                xsRangeError("Invalid command reference PCM");
+            voice->command_references[i] = reference;
+            voice->command_reference_sizes[i] = reference_size;
+        }
+    }
     voice->models = srmodel_load(data);
     char *wake_name = esp_srmodel_filter(voice->models, "wn9", "hijoy");
     char *command_name = esp_srmodel_filter(voice->models, "mn6", "en");
@@ -216,10 +277,14 @@ void xs_joy_voice_constructor(xsMachine *the) {
         if (esp_mn_commands_add(i + 1, commands[i]) != ESP_OK) xsUnknownError("Cannot register voice command");
     if (voice->reference && esp_mn_commands_add(5, "TELL ME A JOKE") != ESP_OK)
         xsUnknownError("Cannot register reference command");
+    if (voice->reference && (esp_mn_commands_add(1, "START A POMODORO TIMER") != ESP_OK ||
+            esp_mn_commands_add(2, "PAUSE THE TIMER") != ESP_OK))
+        xsUnknownError("Cannot register diagnostic phrases");
     if (esp_mn_commands_update()) xsUnknownError("Speech model rejected command vocabulary");
-    // Four commands behind an explicit wake window; live negative tests still
-    // must confirm this trial threshold before the feature is released.
-    voice->mn->set_det_threshold(voice->commands, 0.65f);
+    if (voice->reference) esp_mn_active_commands_print();
+    // Low-threshold synthetic probes produced wrong commands. Preserve the
+    // previous live threshold until a replacement passes command/negative tests.
+    voice->mn->set_det_threshold(voice->commands, JOY_COMMAND_THRESHOLD);
     voice->queue_storage = heap_caps_malloc(JOY_QUEUE_FRAMES * sizeof(JoyFrame), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
     if (voice->queue_storage)
         voice->queue = xQueueCreateStatic(JOY_QUEUE_FRAMES, sizeof(JoyFrame), voice->queue_storage, &voice->queue_control);
@@ -255,6 +320,7 @@ void xs_joy_voice_detect(xsMachine *the) {
     JoyFrame frame = {.mode = xsmcToBoolean(xsArg(1))};
     portENTER_CRITICAL(&voice->lock);
     int result = voice->result;
+    if (result > 0) voice->delivered_results++;
     voice->result = 0;
     frame.generation = voice->generation;
     portEXIT_CRITICAL(&voice->lock);
@@ -274,6 +340,7 @@ void xs_joy_voice_stats(xsMachine *the) {
     uint32_t wake = voice->wake_frames, commands = voice->command_frames;
     uint32_t dropped = voice->dropped_frames, longest = voice->max_inference_us;
     int self_test_result = voice->self_test_result;
+    uint32_t detections = voice->native_detections, timeouts = voice->command_timeouts, delivered = voice->delivered_results;
     portEXIT_CRITICAL(&voice->lock);
     xsmcVars(1);
     xsmcSetNewObject(xsResult);
@@ -282,4 +349,7 @@ void xs_joy_voice_stats(xsMachine *the) {
     xsmcSetInteger(xsVar(0), dropped); xsmcSet(xsResult, xsID("droppedFrames"), xsVar(0));
     xsmcSetInteger(xsVar(0), longest / 1000); xsmcSet(xsResult, xsID("maxInferenceMs"), xsVar(0));
     xsmcSetInteger(xsVar(0), self_test_result); xsmcSet(xsResult, xsID("selfTestResult"), xsVar(0));
+    xsmcSetInteger(xsVar(0), detections); xsmcSet(xsResult, xsID("nativeDetections"), xsVar(0));
+    xsmcSetInteger(xsVar(0), timeouts); xsmcSet(xsResult, xsID("commandTimeouts"), xsVar(0));
+    xsmcSetInteger(xsVar(0), delivered); xsmcSet(xsResult, xsID("deliveredResults"), xsVar(0));
 }

@@ -5,6 +5,7 @@
     "pomodoro-pcm-gain": "./pcm-gain",
     "pomodoro-timer": "./timer",
     "pomodoro-command-window": "./command-window",
+    "pomodoro-recognition-result": "./recognition-result",
     "pomodoro-deferred-completion": "./deferred-completion",
     "pomodoro-presentation": "./presentation",
     "pomodoro-controller": "./controller",
