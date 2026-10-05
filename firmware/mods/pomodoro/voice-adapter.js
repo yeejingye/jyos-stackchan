@@ -130,7 +130,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
           if (!windowStats) windowStats = stats
           const elapsed = ((Time.ticks >>> 0) - captureStarted) >>> 0
           const inputHz = elapsed ? Math.round((capturedFrames * engine.chunkSamples * 1000) / elapsed) : 0
-          const decoded = stats.commandFrames - windowStats.commandFrames
+          const decoded = stats.frontendFrames - windowStats.frontendFrames
           debug('Listening for a command…', `${inputHz} Hz · ${decoded}/${capturedFrames} frames`)
           trace(
             `[joy-voice] input-peak=${peak} input-hz=${inputHz} decoded=${decoded} submitted=${capturedFrames} stats=${JSON.stringify(stats)}\n`,
@@ -141,7 +141,7 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
           const stats = engine?.stats
           const summary =
             stats && windowStats
-              ? `${stats.commandFrames - windowStats.commandFrames}/${capturedFrames} frames · lost ${stats.droppedFrames - windowStats.droppedFrames}`
+              ? `${stats.frontendFrames - windowStats.frontendFrames}/${capturedFrames} frames · lost ${stats.droppedFrames - windowStats.droppedFrames}`
               : ''
           trace(`[joy-voice] window-ended ${summary}\n`)
           windowStats = undefined

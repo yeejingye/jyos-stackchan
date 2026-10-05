@@ -39,7 +39,9 @@ typedef struct {
     const esp_afe_sr_iface_t *afe;
     esp_afe_sr_data_t *frontend;
     int16_t *feed_buffer;
-    int feed_chunk, feed_used;
+    int feed_chunk, feed_used, frontend_pending;
+    uint32_t frontend_frames, frontend_invalid;
+    int frontend_output_size;
     int chunk;
     int allocated;
     QueueHandle_t queue;
@@ -70,6 +72,7 @@ static int joy_frontend_reset(JoyVoice *voice) {
     if (voice->feed_buffer) heap_caps_free(voice->feed_buffer);
     voice->feed_buffer = NULL;
     voice->feed_used = 0;
+    voice->frontend_pending = 0;
     afe_config_t *config = afe_config_init("M", voice->models, AFE_TYPE_SR, AFE_MODE_LOW_COST);
     if (!config) return 0;
     config->aec_init = false;
@@ -112,15 +115,33 @@ static esp_mn_state_t joy_command_detect(JoyVoice *voice, const int16_t *samples
         if (voice->feed_used != voice->feed_chunk) continue;
         voice->feed_used = 0;
         voice->afe->feed(voice->frontend, voice->feed_buffer);
-        // AFE has its own worker; wait only one tick, then drain available frames.
-        // Keeping both ends moving avoids a full ring buffer blocking the producer.
-        afe_fetch_result_t *output = voice->afe->fetch_with_delay(voice->frontend, 1);
-        while (output && output->ret_value == ESP_OK) {
-            if (output->data && output->data_size == voice->chunk * sizeof(int16_t)) {
-                state = voice->mn->detect(voice->commands, output->data);
-                if (state != ESP_MN_STATE_DETECTING) return state;
+        voice->frontend_pending += voice->feed_chunk;
+        // A timed fetch can consume a partial ring-buffer read. Do not poll
+        // after each 160-sample feed when fetch requires 512 samples. Supply
+        // a complete output frame first, then let the AFE worker finish it.
+        while (voice->frontend_pending >= voice->chunk) {
+            afe_fetch_result_t *output = voice->afe->fetch_with_delay(voice->frontend, pdMS_TO_TICKS(100));
+            voice->frontend_pending -= voice->chunk;
+            if (!output || output->ret_value == ESP_FAIL || !output->data ||
+                output->data_size != voice->chunk * sizeof(int16_t)) {
+                portENTER_CRITICAL(&voice->lock);
+                voice->frontend_invalid++;
+                portEXIT_CRITICAL(&voice->lock);
+                printf("[joy-voice] AFE incomplete output state=%d size=%d\n",
+                    output ? output->ret_value : -1, output ? output->data_size : 0);
+                voice->frontend_pending = 0;
+                break;
             }
-            output = voice->afe->fetch_with_delay(voice->frontend, 0);
+            if (!voice->frontend_output_size) {
+                voice->frontend_output_size = output->data_size;
+                printf("[joy-voice] AFE first output size=%d configured-samples=%d data-present=%d\n",
+                    output->data_size, voice->chunk, output->data != NULL);
+            }
+            portENTER_CRITICAL(&voice->lock);
+            voice->frontend_frames++;
+            portEXIT_CRITICAL(&voice->lock);
+            state = voice->mn->detect(voice->commands, output->data);
+            if (state != ESP_MN_STATE_DETECTING) return state;
         }
     }
     return state;
@@ -137,6 +158,7 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
     int recognized = 0;
     int accepted = 0;
     esp_mn_state_t final_state = ESP_MN_STATE_DETECTING;
+    uint32_t decoded_before = voice->frontend_frames, invalid_before = voice->frontend_invalid;
     int64_t started = esp_timer_get_time();
     for (size_t offset = 0; offset < length + 16000 * 2 * 5; offset += bytes) {
         memset(samples, 0, bytes);
@@ -169,6 +191,7 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
                 results->num > 0 ? (double)results->prob[0] : 0.0);
     }
     voice->mn->clean(voice->commands);
+    printf("[joy-voice] AFE probe decoded=%u invalid=%u\n", voice->frontend_frames - decoded_before, voice->frontend_invalid - invalid_before);
     printf("[joy-voice] reference-test recognized=%d expected=%d accepted=%d elapsed-ms=%u audio-ms=%u\n", recognized,
         expected, accepted, (unsigned)((esp_timer_get_time() - started) / 1000), frames * voice->chunk / 16);
     return expected == 0 ? !accepted : recognized == expected && accepted;
@@ -454,6 +477,7 @@ void xs_joy_voice_stats(xsMachine *the) {
     uint32_t dropped = voice->dropped_frames, longest = voice->max_inference_us;
     int self_test_result = voice->self_test_result;
     uint32_t detections = voice->native_detections, timeouts = voice->command_timeouts, delivered = voice->delivered_results;
+    uint32_t processed = voice->frontend_frames, invalid = voice->frontend_invalid;
     portEXIT_CRITICAL(&voice->lock);
     xsmcVars(1);
     xsmcSetNewObject(xsResult);
@@ -464,5 +488,7 @@ void xs_joy_voice_stats(xsMachine *the) {
     xsmcSetInteger(xsVar(0), self_test_result); xsmcSet(xsResult, xsID("selfTestResult"), xsVar(0));
     xsmcSetInteger(xsVar(0), detections); xsmcSet(xsResult, xsID("nativeDetections"), xsVar(0));
     xsmcSetInteger(xsVar(0), timeouts); xsmcSet(xsResult, xsID("commandTimeouts"), xsVar(0));
+    xsmcSetInteger(xsVar(0), processed); xsmcSet(xsResult, xsID("frontendFrames"), xsVar(0));
+    xsmcSetInteger(xsVar(0), invalid); xsmcSet(xsResult, xsID("frontendInvalid"), xsVar(0));
     xsmcSetInteger(xsVar(0), delivered); xsmcSet(xsResult, xsID("deliveredResults"), xsVar(0));
 }
