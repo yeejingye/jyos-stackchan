@@ -17,6 +17,7 @@ import {
   writeBuildVariant,
 } from './lib/build-variant.mjs'
 import { aliases, devices, resolveDevice } from './lib/devices.mjs'
+import { verifyHostFlash } from './lib/host-flash.mjs'
 import { prepareCoreS3IdfDependencies } from './lib/idf-dependencies.mjs'
 import { installModArchive, resolveModArchivePath } from './lib/mod-flash.mjs'
 import { prepareCoreS3VersionSdkconfig, readModdableVersion } from './lib/moddable-version.mjs'
@@ -67,6 +68,13 @@ const uploadPort =
   readOption(rawArgs, 'port') ?? process.env.STACKCHAN_PORT ?? process.env.UPLOAD_PORT ?? process.env.ESPPORT
 const uploadBaud = readOption(rawArgs, 'baud') ?? process.env.STACKCHAN_BAUD ?? process.env.ESPBAUD
 let subprocessEnvironment = uploadPort ? { ...process.env, UPLOAD_PORT: uploadPort } : process.env
+if (uploadBaud !== undefined) {
+  if (!/^[1-9][0-9]*$/.test(String(uploadBaud))) {
+    console.error('[stack-chan] Upload baud must be a positive integer')
+    process.exit(1)
+  }
+  subprocessEnvironment = { ...subprocessEnvironment, UPLOAD_SPEED: String(uploadBaud) }
+}
 
 if (
   deviceName === 'm5stackchan_cores3' &&
@@ -171,6 +179,24 @@ switch (command) {
       path.resolve(manifest),
       ...args,
     ])
+    if (!dryRun) {
+      try {
+        const count = verifyHostFlash({
+          outputDirectory: buildOutputDirectory,
+          deviceName,
+          mode: buildMode,
+          applicationName: hostApplicationName,
+          chip: device.esptoolChip,
+          port: uploadPort,
+          baud: uploadBaud,
+          runCommand: run,
+        })
+        console.log(`[stack-chan] Host installation verified: ${count} images matched`)
+      } catch (error) {
+        console.error(`[stack-chan] Host installation could not be verified: ${error.message}`)
+        process.exit(1)
+      }
+    }
     break
   case 'debug':
     run('mcconfig', [...buildModeArgs, '-m', '-p', platform, ...outputArgs, path.resolve(manifest), ...args])

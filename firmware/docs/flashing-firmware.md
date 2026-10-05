@@ -20,6 +20,10 @@ The host and the MOD each consist of a manifest file (manifest.json), source cod
 
 For all configuration items, please refer to the [Moddable official documentation](https://github.com/Moddable-OpenSource/moddable/blob/public/documentation/tools/manifest.md).
 
+### Verified CLI deployment
+
+`npm run deploy -- --port /dev/cu.usbmodem101 --baud 115200` builds and writes the host, then independently verifies every image in ESP-IDF's generated flash plan. A verification failure returns an error; do not install a MOD or treat the host as ready after that failure. `--baud` controls the host upload speed and subsequent verification. The optional `npm run flash:joy-voice` script also uses this verified deployment path. Build success and MOD verification alone do not establish a successful host upload.
+
 ## Configuration
 
 StackChan can change settings such as motor types and pin assignments from the manifest file. You can modify [`stack-chan/firmware/host/app/manifest_local.json`](../host/app/manifest_local.json) for local settings. The following settings can be written under the `"config"` key.

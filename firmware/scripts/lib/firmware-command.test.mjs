@@ -167,7 +167,7 @@ function createFirmwareWrapperFixture() {
   writeFileSync(
     fakeMcconfig,
     `#!/usr/bin/env node
-const { appendFileSync, existsSync, readFileSync, realpathSync, rmSync } = require('node:fs')
+const { appendFileSync, existsSync, readFileSync, realpathSync, rmSync, mkdirSync, writeFileSync } = require('node:fs')
 const path = require('node:path')
 
 const args = process.argv.slice(2)
@@ -194,9 +194,19 @@ if (targetIndex >= 0 && args[targetIndex + 1] === 'clean') {
 ) {
   process.exit(12)
 }
+if (targetIndex >= 0 && args[targetIndex + 1] === 'deploy') {
+  const build = path.join(path.dirname(path.dirname(idfManifest)), 'build')
+  mkdirSync(build, { recursive: true })
+  writeFileSync(path.join(build, 'xs_esp32.bin'), 'fixture image')
+  writeFileSync(path.join(build, 'flasher_args.json'), JSON.stringify({ flash_files: { '0x10000': 'xs_esp32.bin' } }))
+}
+
 `,
   )
   chmodSync(fakeMcconfig, 0o755)
+  const fakeEsptool = path.join(fakeBin, 'esptool')
+  writeFileSync(fakeEsptool, '#!/usr/bin/env node\nprocess.exit(Number(process.env.STACKCHAN_TEST_VERIFY_EXIT || 0))\n')
+  chmodSync(fakeEsptool, 0o755)
 
   return {
     root,
@@ -268,3 +278,31 @@ function assertMainCommand(invocation, command, manifestPath) {
 function count(source, value) {
   return source.split(value).length - 1
 }
+
+test('deployment fails when independent verification fails despite mcconfig success', () => {
+  const fixture = createFirmwareWrapperFixture()
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ['scripts/firmware.mjs', 'deploy', '--mode=instrument', '--manifest', fixture.normalManifest],
+      {
+        cwd: fixture.firmware,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          MODDABLE: fixture.fakeModdable,
+          PATH: `${fixture.fakeBin}${path.delimiter}${process.env.PATH}`,
+          STACKCHAN_TEST_COMMAND_LOG: fixture.commandLog,
+          STACKCHAN_TEST_VERIFY_EXIT: '7',
+          STACKCHAN_DRY_RUN: '',
+          npm_config_target: '',
+        },
+      },
+    )
+    assert.equal(result.status, 7, result.stderr)
+    assert.doesNotMatch(result.stdout, /Host installation verified/)
+    assert.equal(readInvocations(fixture.commandLog).at(-1).includes('deploy'), true)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
