@@ -96,7 +96,7 @@ Chime volume, countdown readability, microphone channel/gain, detector threshold
 
 ## Acceptance
 
-[Acceptance matrix](acceptance.md). No recognition, timing, UI or integration tests performed. Final recognition targets, command window and response latency remain TBD.
+[Acceptance matrix](acceptance.md). Automated timer and integration logic tests pass; live wake/greeting and Cancel have owner-confirmed positive evidence. Tomato and Resume recognition, full-duration timing, UI review, negative activation and hardware coexistence remain open. The five-second product command window and accuracy/latency targets above are specified; diagnostic builds may use a longer window and are not acceptance evidence for product latency.
 
 ## Deferred scope
 

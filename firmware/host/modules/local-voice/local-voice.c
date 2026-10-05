@@ -3,6 +3,7 @@
 #include "mc.xs.h"
 #include "esp_wn_models.h"
 #include "esp_mn_models.h"
+#include "esp_afe_sr_models.h"
 #include "esp_mn_speech_commands.h"
 #include "model_path.h"
 #include "freertos/FreeRTOS.h"
@@ -35,6 +36,10 @@ typedef struct {
     const esp_mn_iface_t *mn;
     model_iface_data_t *wake;
     model_iface_data_t *commands;
+    const esp_afe_sr_iface_t *afe;
+    esp_afe_sr_data_t *frontend;
+    int16_t *feed_buffer;
+    int feed_chunk, feed_used;
     int chunk;
     int allocated;
     QueueHandle_t queue;
@@ -56,7 +61,76 @@ typedef struct {
 } JoyVoice;
 static JoyVoice *owner;
 
+// Command-only AFE: one microphone, no playback reference, and no duplicate
+// WakeNet. Feed and fetch frame sizes are queried independently. Never gate on
+// VAD: the decoder needs continuous speech plus silence for utterance endings.
+static int joy_frontend_reset(JoyVoice *voice) {
+    if (voice->frontend) voice->afe->destroy(voice->frontend);
+    voice->frontend = NULL;
+    if (voice->feed_buffer) heap_caps_free(voice->feed_buffer);
+    voice->feed_buffer = NULL;
+    voice->feed_used = 0;
+    afe_config_t *config = afe_config_init("M", voice->models, AFE_TYPE_SR, AFE_MODE_LOW_COST);
+    if (!config) return 0;
+    config->aec_init = false;
+    config->se_init = false;
+    config->wakenet_init = false;
+    config->vad_init = false;
+    config->ns_init = true;
+    config->afe_ns_mode = AFE_NS_MODE_WEBRTC;
+    config->ns_model_name = NULL;
+    config->agc_init = true;
+    config->agc_mode = AFE_AGC_MODE_WEBRTC;
+    config->memory_alloc_mode = AFE_MEMORY_ALLOC_MORE_PSRAM;
+    config->afe_perferred_core = xPortGetCoreID();
+    config->afe_perferred_priority = 4;
+    config->afe_ringbuf_size = 4;
+    voice->afe = esp_afe_handle_from_config(config);
+    if (voice->afe) voice->frontend = voice->afe->create_from_config(config);
+    afe_config_free(config);
+    if (!voice->frontend) return 0;
+    voice->feed_chunk = voice->afe->get_feed_chunksize(voice->frontend);
+    if (voice->feed_chunk <= 0 || voice->feed_chunk > 2048 ||
+        voice->afe->get_feed_channel_num(voice->frontend) != 1 ||
+        voice->afe->get_fetch_chunksize(voice->frontend) != voice->chunk) return 0;
+    voice->feed_buffer = heap_caps_malloc(voice->feed_chunk * sizeof(int16_t), MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT);
+    if (!voice->feed_buffer) return 0;
+    printf("[joy-voice] AFE mono NS+AGC feed=%d fetch=%d free-internal=%u free-PSRAM=%u\n",
+        voice->feed_chunk, voice->chunk, (unsigned)heap_caps_get_free_size(MALLOC_CAP_INTERNAL),
+        (unsigned)heap_caps_get_free_size(MALLOC_CAP_SPIRAM));
+    return 1;
+}
+
+static esp_mn_state_t joy_command_detect(JoyVoice *voice, const int16_t *samples) {
+    esp_mn_state_t state = ESP_MN_STATE_DETECTING;
+    for (int offset = 0; offset < voice->chunk;) {
+        int count = voice->feed_chunk - voice->feed_used;
+        if (count > voice->chunk - offset) count = voice->chunk - offset;
+        memcpy(voice->feed_buffer + voice->feed_used, samples + offset, count * sizeof(int16_t));
+        voice->feed_used += count;
+        offset += count;
+        if (voice->feed_used != voice->feed_chunk) continue;
+        voice->feed_used = 0;
+        voice->afe->feed(voice->frontend, voice->feed_buffer);
+        // AFE has its own worker; wait only one tick, then drain available frames.
+        // Keeping both ends moving avoids a full ring buffer blocking the producer.
+        afe_fetch_result_t *output = voice->afe->fetch_with_delay(voice->frontend, 1);
+        while (output && output->ret_value == ESP_OK) {
+            if (output->data && output->data_size == voice->chunk * sizeof(int16_t)) {
+                state = voice->mn->detect(voice->commands, output->data);
+                if (state != ESP_MN_STATE_DETECTING) return state;
+            }
+            output = voice->afe->fetch_with_delay(voice->frontend, 0);
+        }
+    }
+    return state;
+}
+
 static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length, int expected) {
+    if (!joy_frontend_reset(voice)) {
+        printf("[joy-voice] AFE initialization failed\n");
+        return 0;
+    }
     int16_t samples[JOY_MAX_FRAME_SAMPLES];
     size_t bytes = voice->chunk * sizeof(int16_t);
     unsigned frames = 0;
@@ -70,7 +144,7 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
             size_t count = length - offset;
             memcpy(samples, pcm + offset, count < bytes ? count : bytes);
         }
-        esp_mn_state_t state = voice->mn->detect(voice->commands, samples);
+        esp_mn_state_t state = joy_command_detect(voice, samples);
         final_state = state;
         frames++;
         if (state == ESP_MN_STATE_DETECTED) {
@@ -169,6 +243,12 @@ static void joy_voice_worker(void *argument) {
                 wake_primed = 0;
             }
             if (frame.mode && commands_primed) voice->mn->clean(voice->commands);
+            if (frame.mode && !joy_frontend_reset(voice)) {
+                portENTER_CRITICAL(&voice->lock);
+                voice->result = -2;
+                portEXIT_CRITICAL(&voice->lock);
+                continue;
+            }
             generation = current;
             mode = frame.mode;
         }
@@ -181,7 +261,7 @@ static void joy_voice_worker(void *argument) {
                 wake_primed = 1;
             }
         } else {
-            esp_mn_state_t state = voice->mn->detect(voice->commands, frame.samples);
+            esp_mn_state_t state = joy_command_detect(voice, frame.samples);
             commands_primed = 1;
             if (state == ESP_MN_STATE_DETECTED) {
                 esp_mn_results_t *results = voice->mn->get_results(voice->commands);
@@ -230,6 +310,8 @@ void xs_joy_voice_destructor(void *data) {
     if (voice->queue) vQueueDelete(voice->queue);
     if (voice->queue_storage) heap_caps_free(voice->queue_storage);
     if (voice->done) vSemaphoreDelete(voice->done);
+    if (voice->frontend) voice->afe->destroy(voice->frontend);
+    if (voice->feed_buffer) heap_caps_free(voice->feed_buffer);
     if (voice->allocated) esp_mn_commands_free();
     if (voice->commands) voice->mn->destroy(voice->commands);
     if (voice->wake) voice->wn->destroy(voice->wake);
