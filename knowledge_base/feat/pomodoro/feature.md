@@ -16,7 +16,7 @@ Specification baseline 0.3 · 2026-10-04 · Owner authorised implementation afte
 
 ## Goal and owner-agreed behaviour
 
-Say “Hi Joy”, then “Pomodoro”, to start a 20-minute focus phase followed by a 5-minute rest phase. Say “Hi Joy, pause” to pause the whole running Pomodoro. Say “Hi Joy, cancel” to cancel the session and return to normal mode. Say “Hi Joy, resume” to continue a paused session from its retained phase and remaining time. Complete one focus/rest cycle, then return to normal mode; do not repeat automatically. A gentle chime marks the end of focus and another marks the end of rest. Repeating Pomodoro while a session exists, including while paused, preserves its phase, remaining time and paused/running state. During Pomodoro mode the countdown is visible without substantially blocking the face. Research completion speech is deferred until Pomodoro ends.
+Say “Hi Joy”, then “Start Tomato Timer”, to start a 20-minute focus phase followed by a 5-minute rest phase. Say “Hi Joy, pause” to pause the whole running Pomodoro. Say “Hi Joy, cancel” to cancel the session and return to normal mode. Say “Hi Joy, resume” to continue a paused session from its retained phase and remaining time. Complete one focus/rest cycle, then return to normal mode; do not repeat automatically. A gentle chime marks the end of focus and another marks the end of rest. Repeating Pomodoro while a session exists, including while paused, preserves its phase, remaining time and paused/running state. During Pomodoro mode the countdown is visible without substantially blocking the face. Research completion speech is deferred until Pomodoro ends.
 
 The conversational LLM/STT/TTS provider plan is deferred at the owner's request. This feature requires a small recognised command set, not an LLM. The opt-in host uses ESP-SR 2.5.5, WakeNet Hi Joy and MultiNet English with four commands. Build and flash verification passed; live voice accuracy remains unproven.
 
@@ -25,7 +25,7 @@ The conversational LLM/STT/TTS provider plan is deferred at the owner's request.
 ```mermaid
 flowchart LR
   Normal["Normal face / idle"]
-  Command["Hi Joy then Pomodoro"]
+  Command["Hi Joy then Start Tomato Timer"]
   Focus["Focus: 20 minutes"]
   Rest["Rest: 5 minutes"]
   Paused["Paused: phase and remaining time retained"]
@@ -48,7 +48,7 @@ Resume retains the paused phase and remaining time; it does not restart that pha
 
 | ID | Requirement | Status |
 | --- | --- | --- |
-| PM-01 | Accept Hi Joy activation followed by Pomodoro and start a focus session. | Owner specified |
+| PM-01 | Accept Hi Joy activation followed by Start Tomato Timer and start a focus session. | Owner specified |
 | PM-02 | Focus lasts 1,200 seconds, then rest lasts 300 seconds. | Owner specified |
 | PM-03 | Accept Hi Joy pause during focus or rest; freeze remaining time and phase, including automatic transitions. | Owner confirmed |
 | PM-04 | Accept Hi Joy cancel during focus, rest or pause; remove countdown and return to normal mode. | Owner specified |

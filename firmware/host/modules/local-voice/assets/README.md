@@ -13,3 +13,7 @@ Repository license: MIT (see `../LICENSE.models.txt`). Extracted byte SHA-256: `
 The same generation process also supplies `joy-reference-start-phrase.pcm` (Start a Pomodoro timer), `joy-reference-pause-phrase.pcm` (Pause the timer), and `joy-reference-control.pcm` (Tell me a joke). Temporary phrase aliases are used only during startup probes and removed before live listening. The same-voice control distinguishes generated audio compatibility from command-specific failure.
 
 Additional probes: `joy-reference-resume.pcm` says “Please resume” to disambiguate the verb pronunciation; `joy-reference-cancel.pcm` says “Cancel”; `joy-reference-negative.pcm` says “Start a potato timer” and must produce no accepted command. They use the same Samantha generation/conversion and silence prefix. Diagnostic-only threshold calibration feeds the generated Pomodoro resource, never microphone recordings, and restores the live threshold before listening.
+
+## Start Tomato Timer revision
+
+`joy-reference-tomato.pcm` says “Start Tomato Timer”, generated with the same Samantha process above. It replaces the active Pomodoro startup probe. Historical Pomodoro assets remain as diagnostic evidence but are no longer bundled or run. The old threshold sweep is retired. Startup retains pause, control, resume, cancel and near-sounding potato negative probes; the start phrase stays in the live vocabulary after probes finish.

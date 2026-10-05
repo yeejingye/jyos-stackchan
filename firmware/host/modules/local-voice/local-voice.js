@@ -5,9 +5,9 @@ export default class extends Native('xs_joy_voice_destructor') {
     super()
     this.models = new Resource('joy-voice-models.bin')
     this.reference = diagnostics ? new Resource('joy-reference-command.pcm') : undefined
-    this.pomodoroReference = diagnostics ? new Resource('joy-reference-pomodoro.pcm') : undefined
+    this.tomatoReference = diagnostics ? new Resource('joy-reference-tomato.pcm') : undefined
     this.pauseReference = diagnostics ? new Resource('joy-reference-pause.pcm') : undefined
-    this.startPhraseReference = diagnostics ? new Resource('joy-reference-start-phrase.pcm') : undefined
+    this.startPhraseReference = undefined // Retired Pomodoro pronunciation probe; retain native argument position.
     this.pausePhraseReference = diagnostics ? new Resource('joy-reference-pause-phrase.pcm') : undefined
     this.controlReference = diagnostics ? new Resource('joy-reference-control.pcm') : undefined
     this.resumeReference = diagnostics ? new Resource('joy-reference-resume.pcm') : undefined
@@ -17,7 +17,7 @@ export default class extends Native('xs_joy_voice_destructor') {
       this,
       this.models,
       this.reference,
-      this.pomodoroReference,
+      this.tomatoReference,
       this.pauseReference,
       this.startPhraseReference,
       this.pausePhraseReference,

@@ -93,7 +93,10 @@ export function attachLocalVoice(robot, controller, { diagnostics = false } = {}
         } else if (result > 0) {
           const { command, accepted } = dispatchRecognition(window, result)
           awaitingCommand = false
-          debug(`Heard: ${command ?? 'unknown'}`, accepted ? 'Command accepted' : 'Command not accepted')
+          debug(
+            `Heard: ${command === 'pomodoro' ? 'Start Tomato Timer' : (command ?? 'unknown')}`,
+            accepted ? 'Command accepted' : 'Command not accepted',
+          )
           trace(`[joy-voice] candidate=${command} accepted=${accepted}\n`)
           if (accepted) reset()
         }

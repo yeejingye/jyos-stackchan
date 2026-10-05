@@ -5,9 +5,8 @@
     "*": [
       "../../../dist/voice-models/joy-voice-models.bin",
       "./assets/joy-reference-command.pcm",
-      "./assets/joy-reference-pomodoro.pcm",
+      "./assets/joy-reference-tomato.pcm",
       "./assets/joy-reference-pause.pcm",
-      "./assets/joy-reference-start-phrase.pcm",
       "./assets/joy-reference-pause-phrase.pcm",
       "./assets/joy-reference-control.pcm",
       "./assets/joy-reference-resume.pcm",

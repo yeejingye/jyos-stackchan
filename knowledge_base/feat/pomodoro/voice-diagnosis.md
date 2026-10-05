@@ -84,3 +84,9 @@ Generated-only Pomodoro search thresholds 0.50, 0.35 and 0.20 also produce no ca
 A spontaneous live window in the earlier MN7 variant build ends at 363/373 processed/submitted frames with zero queue losses (about 0.32 seconds of unprocessed audio), versus the earlier MN6 backlog. Speech content is not logged, and this is one window, not sustained real-time or word-accuracy acceptance. A requested manual-start + spoken Cancel check will test positive native-to-XS delivery and actual timer UI together. All 407 unit tests and 19 Pomodoro tests pass; optional host/MOD builds and flash digests pass.
 
 Current blockers: Pomodoro/Resume recognition, positive human-command delivery and UI evidence, AFE/capture-intelligibility validation, sustained throughput, full-duration timer/research coexistence and negative activation acceptance. The feature remains experimental and unmerged.
+
+## 2026-10-05 — Cancel confirmed; Start Tomato Timer trial
+
+Owner confirms spoken Cancel works. The captured live result is native ID 4 at probability 0.733, accepted at threshold 0.65, followed by JavaScript candidate=cancel accepted=true. This verifies positive recognition and native-to-JavaScript command delivery for that attempt.
+
+At the owner’s request, replace the spoken start word with Start Tomato Timer, preserving internal command ID 1 / pomodoro. Pronunciation generated with the pinned Espressif tool is STnRT TcMdTb TiMk. A Samantha 145 words/minute, 16 kHz mono PCM probe is added; the retired Pomodoro probes and threshold sweep no longer run at startup. All 19 timer/control tests pass. Hardware recognition of the new phrase remains pending. Resume reliability and broader voice acceptance remain unfinished.

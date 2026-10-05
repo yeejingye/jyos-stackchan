@@ -6,7 +6,7 @@ The owner selected a bounded command interaction instead of a general voice/LLM 
 flowchart TD
   PCM["CoreS3 microphone: 16 kHz mono"] --> Wake["WakeNet Hi Joy"]
   Wake --> Window["Spoken prompt, then 5-second authorization"]
-  PCM --> Commands["MultiNet English: Pomodoro / pause / resume / cancel"]
+  PCM --> Commands["MultiNet English: Start Tomato Timer / pause / resume / cancel"]
   Commands --> Window
   Window --> Timer["Deadline state machine"]
   Manual["Drawer start / pause-resume / cancel / mute"] --> Timer
@@ -39,3 +39,7 @@ The firmware command wrapper seeds managed dependencies before its parallel nati
 ## Evidence boundaries
 
 Automated timer, completion admission, binary-resource validation and regression checks pass. Host and MOD flash verification are recorded in [progress](progress.md). Live speech reliability, full-duration timing, chime comfort, display readability and coexistence/reboot checks remain acceptance work; a successful build does not prove these.
+
+## Start phrase revision — 2026-10-05
+
+The spoken start phrase is now `start tomato timer`, using Espressif-generated phonemes `STnRT TcMdTb TiMk`. Native command ID 1 still dispatches the internal `pomodoro` event; durations, repeat-start protection and timer lifecycle are unchanged. Bare Pomodoro is retired from the active vocabulary. Startup diagnostic probes do not dispatch timer events.

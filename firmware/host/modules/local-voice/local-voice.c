@@ -108,7 +108,7 @@ static void joy_voice_worker(void *argument) {
     if (voice->reference) {
         int passed = joy_reference_test(voice, voice->reference, voice->reference_size, 5);
         const int expected[] = {1, 2, 1, 2, 5, 3, 4, 0};
-        const char *labels[] = {"pomodoro", "pause", "start-phrase", "pause-phrase", "same-voice-control",
+        const char *labels[] = {"start-tomato-timer", "pause", "historical-start-phrase", "pause-phrase", "same-voice-control",
             "resume-verb-context", "cancel", "negative-potato"};
         for (int i = 0; i < 8; i++) {
             if (voice->command_references[i]) {
@@ -116,15 +116,8 @@ static void joy_voice_worker(void *argument) {
                 passed &= joy_reference_test(voice, voice->command_references[i], voice->command_reference_sizes[i], expected[i]);
             }
         }
-        const float sweep[] = {0.50f, 0.35f, 0.20f};
-        for (int i = 0; i < 3 && voice->command_references[0]; i++) {
-            voice->mn->set_det_threshold(voice->commands, sweep[i]);
-            printf("[joy-voice] generated-only Pomodoro threshold=%.2f\n", (double)sweep[i]);
-            joy_reference_test(voice, voice->command_references[0], voice->command_reference_sizes[0], 1);
-        }
         voice->mn->set_det_threshold(voice->commands, JOY_COMMAND_THRESHOLD);
         esp_mn_commands_remove("tell me a joke");
-        esp_mn_commands_remove("start a pomodoro timer");
         esp_mn_commands_remove("pause the timer");
         if (esp_mn_commands_update()) printf("[joy-voice] diagnostic vocabulary cleanup failed\n");
         voice->mn->clean(voice->commands);
@@ -280,17 +273,16 @@ void xs_joy_voice_constructor(xsMachine *the) {
         xsUnknownError("Incompatible speech frame format");
     if (esp_mn_commands_alloc(voice->mn, voice->commands) != ESP_OK) xsUnknownError("Cannot allocate voice commands");
     voice->allocated = 1;
-    const char *commands[] = {"pomodoro", "pause", "resume", "cancel"};
+    const char *commands[] = {"start tomato timer", "pause", "resume", "cancel"};
     // Espressif multinet_g2p.py, g2p_en 2.1.0. Resume uses verb context,
     // rather than the isolated-word noun pronunciation (resume/résumé).
-    const char *phonemes[] = {"PnMcDeRb", "PeZ", "RmZoM", "KaNScL"};
+    const char *phonemes[] = {"STnRT TcMdTb TiMk", "PeZ", "RmZoM", "KaNScL"};
     for (int i = 0; i < 4; i++)
         if (esp_mn_commands_phoneme_add(i + 1, commands[i], phonemes[i]) != ESP_OK)
             xsUnknownError("Cannot register voice command");
     if (voice->reference && esp_mn_commands_phoneme_add(5, "tell me a joke", "TfL Mm c qbK") != ESP_OK)
         xsUnknownError("Cannot register reference command");
-    if (voice->reference && (esp_mn_commands_phoneme_add(1, "start a pomodoro timer", "STnRT c PnMcDeRb TiMk") != ESP_OK ||
-            esp_mn_commands_phoneme_add(2, "pause the timer", "PeZ jc TiMk") != ESP_OK))
+    if (voice->reference && esp_mn_commands_phoneme_add(2, "pause the timer", "PeZ jc TiMk") != ESP_OK)
         xsUnknownError("Cannot register diagnostic phrases");
     if (esp_mn_commands_update()) xsUnknownError("Speech model rejected command vocabulary");
     if (voice->reference) esp_mn_active_commands_print();
