@@ -59,6 +59,17 @@ test('prepares an SDKCONFIGPATH directory from MODDABLE tools VERSION', () => {
     assert.equal(result.directory, path.join(outputDirectory, 'generated', 'sdkconfig', 'm5stackchan_cores3'))
     assert.match(readFileSync(result.filePath, 'utf8'), /CONFIG_APP_PROJECT_VER="9\.0\.0\+stackchan\.1"/)
     assert.match(readFileSync(result.partitionFilePath, 'utf8'), /0xFE0000/)
+    const baseline = readFileSync(result.filePath, 'utf8')
+    prepareCoreS3VersionSdkconfig({
+      moddableDirectory,
+      outputDirectory,
+      sourceDirectory,
+      additionalDefaults: 'CONFIG_TEST_PROFILE=y\n',
+    })
+    assert.match(readFileSync(result.filePath, 'utf8'), /CONFIG_TEST_PROFILE=y/)
+    assert.equal(readFileSync(path.join(sourceDirectory, 'sdkconfig.defaults'), 'utf8'), 'CONFIG_SPIRAM=y\n')
+    prepareCoreS3VersionSdkconfig({ moddableDirectory, outputDirectory, sourceDirectory })
+    assert.equal(readFileSync(result.filePath, 'utf8'), baseline)
   } finally {
     rmSync(fixture, { recursive: true, force: true })
   }

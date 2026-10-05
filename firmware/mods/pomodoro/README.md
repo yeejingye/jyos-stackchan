@@ -57,3 +57,5 @@ Specification and live acceptance evidence: [knowledge base](../../../knowledge_
 Models: Espressif ESP-SR 2.5.5; `wn9_hijoy_tts` and `mn6_en` plus its required `fst` language graph, source commit `76581015af7075681814627a5bb03d2f3f328f8a`. Espressif model license is included under `host/modules/local-voice/LICENSE.models.txt` and permits use on Espressif products.
 
 With `joyVoice.diagnostics: true`, startup tests Espressif’s reference command audio before starting capture. The face overlay reports the reference result, wake/listening status, recognized command candidates, raw PCM peak and per-window dropped frames. It is not a general speech transcript. A reference pass verifies the native recognizer, not live microphone accuracy.
+
+The opt-in voice host uses a 32 KB instruction cache, 64 KB data cache and 64-byte data lines, following Espressif speech example configurations. The standard host keeps its existing defaults. Larger caches consume additional internal RAM; voice and research-camera coexistence still require hardware acceptance. PSRAM type and clock are unchanged.

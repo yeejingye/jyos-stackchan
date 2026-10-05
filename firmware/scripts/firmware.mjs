@@ -102,7 +102,11 @@ if (!dryRun && deviceName === 'm5stackchan_cores3' && command !== 'mod' && comma
     process.exit(1)
   }
   try {
-    const versionSdkconfig = prepareCoreS3VersionSdkconfig()
+    const versionSdkconfig = prepareCoreS3VersionSdkconfig({
+      additionalDefaults: manifest.endsWith('manifest_m5stackchan_cores3_joy_voice.json')
+        ? 'CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y\nCONFIG_ESP32S3_DATA_CACHE_64KB=y\nCONFIG_ESP32S3_DATA_CACHE_LINE_64B=y\n'
+        : '',
+    })
     subprocessEnvironment = { ...subprocessEnvironment, SDKCONFIGPATH: versionSdkconfig.directory }
   } catch (error) {
     console.error(`[stack-chan] CoreS3 firmware version could not be prepared: ${error.message}`)

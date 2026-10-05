@@ -72,7 +72,7 @@ CONFIG_APP_PROJECT_VER="${descriptorVersion}"
 
 /**
  * Writes a generated sdkconfig directory for Moddable's SDKCONFIGPATH.
- * @param {{platformName: string, moddableDirectory?: string, outputDirectory?: string, sourceDirectory: string, partitionSourcePath: string}} options - Generation inputs.
+ * @param {{platformName: string, moddableDirectory?: string, outputDirectory?: string, sourceDirectory: string, partitionSourcePath: string, additionalDefaults?: string}} options - Generation inputs.
  * @returns {{directory: string, filePath: string, partitionFilePath: string, version: string, moddableVersion: string}} Generated configuration details.
  */
 export function prepareVersionSdkconfig({
@@ -81,6 +81,7 @@ export function prepareVersionSdkconfig({
   outputDirectory = buildOutputDirectory,
   sourceDirectory,
   partitionSourcePath,
+  additionalDefaults = '',
 }) {
   if (!/^[0-9A-Za-z._-]+$/.test(platformName)) {
     throw new Error(`Invalid sdkconfig platform name: ${platformName || 'missing'}`)
@@ -89,7 +90,7 @@ export function prepareVersionSdkconfig({
   const version = firmwareDescriptorVersion(moddableVersion)
   const sourcePath = path.join(sourceDirectory, 'sdkconfig.defaults')
   const source = readFileSync(sourcePath, 'utf8')
-  const sdkconfig = renderVersionSdkconfig(source, moddableVersion)
+  const sdkconfig = renderVersionSdkconfig(`${source}\n${additionalDefaults}`, moddableVersion)
   const directory = path.join(outputDirectory, 'generated', 'sdkconfig', platformName)
   const filePath = path.join(directory, 'sdkconfig.defaults')
   const partitionFilePath = path.join(directory, 'partitions.csv')
@@ -107,13 +108,14 @@ export function prepareVersionSdkconfig({
 
 /**
  * Writes the M5StackChan CoreS3 sdkconfig overlay used by normal firmware builds.
- * @param {{moddableDirectory?: string, outputDirectory?: string, sourceDirectory?: string, partitionSourcePath?: string}} options - Generation inputs.
+ * @param {{moddableDirectory?: string, outputDirectory?: string, sourceDirectory?: string, partitionSourcePath?: string, additionalDefaults?: string}} options - Generation inputs.
  * @returns {{directory: string, filePath: string, partitionFilePath: string, version: string, moddableVersion: string}} Generated configuration details.
  */
 export function prepareCoreS3VersionSdkconfig({
   moddableDirectory = process.env.MODDABLE,
   outputDirectory = buildOutputDirectory,
   sourceDirectory = coreS3SdkconfigSourceDirectory,
+  additionalDefaults = '',
   partitionSourcePath = path.join(
     moddableDirectory ?? '',
     'build',
@@ -131,6 +133,7 @@ export function prepareCoreS3VersionSdkconfig({
     outputDirectory,
     sourceDirectory,
     partitionSourcePath,
+    additionalDefaults,
   })
 }
 
