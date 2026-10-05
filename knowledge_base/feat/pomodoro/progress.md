@@ -138,3 +138,11 @@ Independent flash verification matches the bootloader and partition table but fa
 Review of the saved Start Tomato Timer host upload log identifies a serial disconnect at about 61.5% of the compressed application write, followed by esptool/CMake/make errors. The earlier report that the host upload was verified was incorrect: the subsequent MOD digest did not verify the host. This directly explains the application mismatch and blank-screen recovery; it does not prove a voice-model startup crash.
 
 Deployment now independently verifies all images listed by IDF flasher_args.json, and a mismatch fails the npm command even if mcconfig reports success. Explicit upload baud is forwarded as UPLOAD_SPEED to Moddable's makefile. All 409 unit tests pass, including failed verification after a successful mock mcconfig deployment. Verified recovery host/MOD are preserved under /tmp/stackchan-verified-recovery. A fresh voice build is being prepared for a 115200-baud upload; Joy remains recovered during preparation.
+
+## 2026-10-05 — Verified Start Tomato Timer experiment
+
+The voice-host retry at explicit 115200 baud completes, and independent verification matches all three images, including the 12,077,888-byte application. The diagnostic MOD also passes its digest check. Startup confirms WakeNet9 Hi Joy and MultiNet7 English running; the prior interrupted host write is resolved for this installation.
+
+Direct synthetic probes: official control ID 5 / 0.781 passes; Start Tomato Timer produces no candidate (5177 ms processing / 5376 ms fed audio); Pause ID 2 / 0.692 passes; Pause the timer ID 2 / 0.658 passes; same-voice control ID 5 / 0.737 passes; Please resume produces no candidate; Cancel ID 4 / 0.831 passes; Start a potato timer gives no accepted command. Search and acceptance remain at 0.65. These are generated clips, not owner voice accuracy results.
+
+A live wake window delivers roughly 16 kHz input and closes at 368/373 processed/submitted frames with zero drops, two native timeouts and zero command detections. The spoken content is not logged; owner confirmation of the phrase and visible outcome is pending. There is no detected result for post-detection dispatch to reject. Start and resume recognition remain unresolved.
