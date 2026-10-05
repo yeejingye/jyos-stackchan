@@ -112,7 +112,7 @@ if (!dryRun && deviceName === 'm5stackchan_cores3' && command !== 'mod' && comma
   try {
     const versionSdkconfig = prepareCoreS3VersionSdkconfig({
       additionalDefaults: manifest.endsWith('manifest_m5stackchan_cores3_joy_voice.json')
-        ? 'CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y\nCONFIG_ESP32S3_DATA_CACHE_64KB=y\nCONFIG_ESP32S3_DATA_CACHE_LINE_64B=y\nCONFIG_SPIRAM_SPEED_40M=n\nCONFIG_SPIRAM_SPEED_80M=y\nCONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096\nCONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536\nCONFIG_SR_MN_EN_NONE=n\nCONFIG_SR_MN_EN_MULTINET7_QUANT=y\n'
+        ? 'CONFIG_ESP32S3_INSTRUCTION_CACHE_32KB=y\nCONFIG_ESP32S3_DATA_CACHE_64KB=y\nCONFIG_ESP32S3_DATA_CACHE_LINE_64B=y\nCONFIG_SPIRAM_SPEED_40M=n\nCONFIG_SPIRAM_SPEED_80M=y\nCONFIG_SPIRAM_MALLOC_ALWAYSINTERNAL=4096\nCONFIG_SPIRAM_MALLOC_RESERVE_INTERNAL=65536\nCONFIG_SR_MN_EN_NONE=n\nCONFIG_SR_MN_EN_MULTINET7_QUANT=n\nCONFIG_SR_MN_EN_MULTINET6_QUANT=y\n'
         : '',
     })
     subprocessEnvironment = { ...subprocessEnvironment, SDKCONFIGPATH: versionSdkconfig.directory }
@@ -168,6 +168,19 @@ switch (command) {
     run('mcconfig', [...buildModeArgs, '-m', '-p', platform, ...outputArgs, path.resolve(manifest), ...args])
     break
   case 'deploy':
+    // Moddable deploy flashes existing native objects; it does not rebuild them.
+    // Compile first so verification covers the current source, not a stale image.
+    run('mcconfig', [
+      ...buildModeArgs,
+      '-m',
+      '-p',
+      platform,
+      '-t',
+      'build',
+      ...outputArgs,
+      path.resolve(manifest),
+      ...args,
+    ])
     run('mcconfig', [
       ...buildModeArgs,
       '-m',

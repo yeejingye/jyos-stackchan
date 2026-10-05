@@ -15,8 +15,12 @@
 #include "joy-command-policy.h"
 #include "sdkconfig.h"
 
-#if !defined(CONFIG_SR_MN_EN_MULTINET7_QUANT)
-#error "Joy voice requires the matching MultiNet7 English command API configuration"
+#if defined(CONFIG_SR_MN_EN_MULTINET6_QUANT)
+#define JOY_MODEL_PREFIX "mn6"
+#elif defined(CONFIG_SR_MN_EN_MULTINET7_QUANT)
+#define JOY_MODEL_PREFIX "mn7"
+#else
+#error "Joy voice requires the matching MultiNet English command API configuration"
 #endif
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +66,36 @@ typedef struct {
     int redact_reference_text;
 } JoyVoice;
 static JoyVoice *owner;
+
+// MultiNet6 accepts uppercase graphemes; MultiNet7 accepts explicit phonemes.
+// Keep IDs and adapter behavior identical while comparing acoustic models.
+#if defined(CONFIG_SR_MN_EN_MULTINET6_QUANT)
+static void joy_command_uppercase(const char *text, char *output) {
+    int i = 0;
+    for (; text[i] && i < ESP_MN_MAX_PHRASE_LEN; i++)
+        output[i] = text[i] >= 'a' && text[i] <= 'z' ? text[i] - 'a' + 'A' : text[i];
+    output[i] = 0;
+}
+#endif
+static esp_err_t joy_command_add(int id, const char *text, const char *phonemes) {
+#if defined(CONFIG_SR_MN_EN_MULTINET6_QUANT)
+    char uppercase[ESP_MN_MAX_PHRASE_LEN + 1];
+    joy_command_uppercase(text, uppercase);
+    return esp_mn_commands_add(id, uppercase);
+#else
+    return esp_mn_commands_phoneme_add(id, text, phonemes);
+#endif
+}
+static esp_err_t joy_command_remove(const char *text) {
+#if defined(CONFIG_SR_MN_EN_MULTINET6_QUANT)
+    char uppercase[ESP_MN_MAX_PHRASE_LEN + 1];
+    joy_command_uppercase(text, uppercase);
+    return esp_mn_commands_remove(uppercase);
+#else
+    return esp_mn_commands_remove(text);
+#endif
+}
+
 
 // Command-only AFE: one microphone, no playback reference, and no duplicate
 // WakeNet. Feed and fetch frame sizes are queried independently. Never gate on
@@ -157,6 +191,8 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
     unsigned frames = 0;
     int recognized = 0;
     int accepted = 0;
+    int best_id = 0;
+    float best_probability = 0;
     esp_mn_state_t final_state = ESP_MN_STATE_DETECTING;
     uint32_t decoded_before = voice->frontend_frames, invalid_before = voice->frontend_invalid;
     int64_t started = esp_timer_get_time();
@@ -174,8 +210,13 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
             if (results && results->num > 0) {
                 recognized = results->command_id[0];
                 accepted = joy_command_accepted(recognized, results->prob[0]);
+                if (results->prob[0] > best_probability) {
+                    best_id = recognized;
+                    best_probability = results->prob[0];
+                }
             }
-            break;
+            // A weak early candidate is not a completed accepted utterance.
+            if (accepted) break;
         }
         if (state == ESP_MN_STATE_TIMEOUT) break;
         vTaskDelay(1);
@@ -191,6 +232,7 @@ static int joy_reference_test(JoyVoice *voice, const uint8_t *pcm, size_t length
                 results->num > 0 ? (double)results->prob[0] : 0.0);
     }
     voice->mn->clean(voice->commands);
+    printf("[joy-voice] probe-best id=%d probability=%.3f\n", best_id, (double)best_probability);
     printf("[joy-voice] AFE probe decoded=%u invalid=%u\n", voice->frontend_frames - decoded_before, voice->frontend_invalid - invalid_before);
     printf("[joy-voice] reference-test recognized=%d expected=%d accepted=%d elapsed-ms=%u audio-ms=%u\n", recognized,
         expected, accepted, (unsigned)((esp_timer_get_time() - started) / 1000), frames * voice->chunk / 16);
@@ -209,7 +251,7 @@ static void joy_voice_worker(void *argument) {
     if (voice->reference) {
         int passed = joy_reference_test(voice, voice->reference, voice->reference_size, 5);
         const int expected[] = {1, 2, 1, 2, 5, 3, 4, 0};
-        const char *labels[] = {"tomato-word", "pause", "tomato-uk-audio-us-grammar", "pause-phrase", "same-voice-control",
+        const char *labels[] = {"tomato-word", "pause", "tomato-uk-audio", "pause-phrase", "same-voice-control",
             "resume-verb-context", "cancel", "negative-potato"};
         for (int i = 0; i < 8; i++) {
             if (voice->command_references[i]) {
@@ -219,9 +261,10 @@ static void joy_voice_worker(void *argument) {
                 passed &= joy_reference_test(voice, voice->command_references[i], voice->command_reference_sizes[i], expected[i]);
             }
         }
+#if defined(CONFIG_SR_MN_EN_MULTINET7_QUANT)
         // Diagnostic-only pronunciation comparison. Restore the live vocabulary below.
-        esp_mn_commands_remove("tomato");
-        if (esp_mn_commands_phoneme_add(1, "tomato", "TcMnTb") != ESP_OK ||
+        joy_command_remove("tomato");
+        if (joy_command_add(1, "tomato", "TcMnTb") != ESP_OK ||
             esp_mn_commands_update()) {
             printf("[joy-voice] alternate pronunciation registration failed\n");
             passed = 0;
@@ -233,15 +276,30 @@ static void joy_voice_worker(void *argument) {
             printf("[joy-voice] probe=negative-potato-uk-grammar\n");
             joy_reference_test(voice, voice->command_references[7], voice->command_reference_sizes[7], 0);
         }
-        esp_mn_commands_remove("tomato");
-        if (esp_mn_commands_phoneme_add(1, "tomato", "TcMdTb") != ESP_OK ||
+        joy_command_remove("tomato");
+        if (joy_command_add(1, "tomato", "TcMdTb") != ESP_OK ||
             esp_mn_commands_update()) {
             printf("[joy-voice] live pronunciation restoration failed\n");
             passed = 0;
         }
+#endif
+        // Keep the primary pass/fail at the product search threshold. Only
+        // failed diagnostics inspect weaker candidates; acceptance is unchanged.
+        if (!passed) {
+            voice->mn->set_det_threshold(voice->commands, 0.2f);
+            for (int i = 0; i < 8; i++) {
+                if (!voice->command_references[i]) continue;
+                printf("[joy-voice] low-search-probe=%s\n", voice->redact_reference_text ? "private" : labels[i]);
+                joy_reference_test(voice, voice->command_references[i], voice->command_reference_sizes[i], expected[i]);
+            }
+        }
         voice->mn->set_det_threshold(voice->commands, JOY_COMMAND_THRESHOLD);
-        esp_mn_commands_remove("tell me a joke");
-        esp_mn_commands_remove("pause the timer");
+        joy_command_remove("tell me a joke");
+        joy_command_remove("pause the timer");
+        joy_command_remove("please resume");
+#if defined(CONFIG_SR_MN_EN_MULTINET6_QUANT)
+        joy_command_remove("please resumme");
+#endif
         if (esp_mn_commands_update()) printf("[joy-voice] diagnostic vocabulary cleanup failed\n");
         voice->mn->clean(voice->commands);
         commands_primed = 1;
@@ -383,9 +441,9 @@ void xs_joy_voice_constructor(xsMachine *the) {
     voice->redact_reference_text = xsmcArgc > 10 && xsmcToBoolean(xsArg(10));
     voice->models = srmodel_load(data);
     char *wake_name = esp_srmodel_filter(voice->models, "wn9", "hijoy");
-    char *command_name = esp_srmodel_filter(voice->models, "mn7", "en");
+    char *command_name = esp_srmodel_filter(voice->models, JOY_MODEL_PREFIX, "en");
     char *fst_name = esp_srmodel_filter(voice->models, "fst", NULL);
-    // MultiNet7 also loads the FST language graph. Check before entering the native library.
+    // MultiNet also loads the FST language graph. Check before entering the native library.
     if (!wake_name || !command_name || !fst_name) xsUnknownError("Missing Joy speech model or FST graph");
     voice->wn = esp_wn_handle_from_name(wake_name);
     voice->mn = esp_mn_handle_from_name(command_name);
@@ -410,12 +468,24 @@ void xs_joy_voice_constructor(xsMachine *the) {
     // rather than the isolated-word noun pronunciation (resume/résumé).
     const char *phonemes[] = {"TcMdTb", "PeZ", "RmZoM", "KaNScL"};
     for (int i = 0; i < 4; i++)
-        if (esp_mn_commands_phoneme_add(i + 1, commands[i], phonemes[i]) != ESP_OK)
+        if (joy_command_add(i + 1, commands[i], phonemes[i]) != ESP_OK)
             xsUnknownError("Cannot register voice command");
-    if (voice->reference && esp_mn_commands_phoneme_add(5, "tell me a joke", "TfL Mm c qbK") != ESP_OK)
+#if defined(CONFIG_SR_MN_EN_MULTINET6_QUANT)
+    // Alternate grapheme outputs observed on independent generated probes.
+    // These share the same action IDs; they are not new product commands.
+    if (joy_command_add(1, "to marto", NULL) != ESP_OK ||
+        joy_command_add(3, "resumme", NULL) != ESP_OK ||
+        joy_command_add(4, "canceil", NULL) != ESP_OK)
+        xsUnknownError("Cannot register command pronunciation variants");
+    if (voice->reference && joy_command_add(3, "please resumme", NULL) != ESP_OK)
+        xsUnknownError("Cannot register diagnostic resume variant");
+#endif
+    if (voice->reference && joy_command_add(5, "tell me a joke", "TfL Mm c qbK") != ESP_OK)
         xsUnknownError("Cannot register reference command");
-    if (voice->reference && esp_mn_commands_phoneme_add(2, "pause the timer", "PeZ jc TiMk") != ESP_OK)
+    if (voice->reference && joy_command_add(2, "pause the timer", "PeZ jc TiMk") != ESP_OK)
         xsUnknownError("Cannot register diagnostic phrases");
+    if (voice->reference && joy_command_add(3, "please resume", "PLmZ RmZoM") != ESP_OK)
+        xsUnknownError("Cannot register diagnostic resume phrase");
     if (esp_mn_commands_update()) xsUnknownError("Speech model rejected command vocabulary");
     if (voice->reference) esp_mn_active_commands_print();
     // Low-threshold synthetic probes produced wrong commands. Preserve the

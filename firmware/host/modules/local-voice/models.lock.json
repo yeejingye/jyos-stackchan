@@ -22,27 +22,27 @@
       ]
     },
     {
-      "name": "mn7_en",
+      "name": "mn6_en",
       "files": [
         {
           "name": "_MODEL_INFO_",
-          "source": "model/multinet_model/mn7_en/_MODEL_INFO_",
-          "sha256": "efdf47e45817535e42c24c5bd5816b3d9fc54113aa7a6943b0d183823830929c"
+          "source": "model/multinet_model/mn6_en/_MODEL_INFO_",
+          "sha256": "bc155320b2b9f093c655eea2dbbe75157284f871ecb3fec10f523d1dbac5ef66"
         },
         {
-          "name": "mn7_data",
-          "source": "model/multinet_model/mn7_en/mn7_data",
-          "sha256": "f9d646f6301041d22de3dc3b1ae842ce9b314af6410b35814087d8042410a8e6"
+          "name": "mn6_data",
+          "source": "model/multinet_model/mn6_en/mn6_data",
+          "sha256": "c277f32170f54d4578f6d50096cf5c3c2a288cea3585b43c99ec3d3ea0caf693"
         },
         {
-          "name": "mn7_index",
-          "source": "model/multinet_model/mn7_en/mn7_index",
-          "sha256": "f7234d8a6c6cdf8df7bb49ae86a48e8ecf20c2cd8ebc8f97665389169d50c6d3"
+          "name": "mn6_index",
+          "source": "model/multinet_model/mn6_en/mn6_index",
+          "sha256": "6fc49932b9cecda2d00a26241d485b94ef6d8ba864d056fcaf3b6591ec398dbe"
         },
         {
           "name": "vocab",
-          "source": "model/multinet_model/mn7_en/vocab",
-          "sha256": "a94f2dbc3b2783db2891763750aa028f2e1f583945b1696931529d80de61951c"
+          "source": "model/multinet_model/mn6_en/vocab",
+          "sha256": "93ada28f3e3fccb11b4da9b3b6265101d41b9b0faf4e7fc081a8d3c6d7ae3ab6"
         }
       ]
     },

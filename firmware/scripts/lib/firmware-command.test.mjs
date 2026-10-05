@@ -94,14 +94,18 @@ test('firmware wrapper cleans manifest switches before every CoreS3 command and 
       const same = runFixture(fixture, command, fixture.normalManifest)
       assert.equal(count(same.stdout, 'prepared IDF dependencies:'), 1, `${command}: same variant preparation`)
       invocations = readInvocations(fixture.commandLog)
-      assert.equal(invocations.length, 3, `${command}: same variant must not clean`)
-      assertMainCommand(invocations[2], command, fixture.normalManifest)
+      const phases = command === 'deploy' ? ['build', 'deploy'] : [command]
+      const firstLength = 1 + phases.length
+      assert.equal(invocations.length, firstLength + phases.length, `${command}: same variant must not clean`)
+      phases.forEach((phase, index) => {
+        assertMainCommand(invocations[firstLength + index], phase, fixture.normalManifest)
+      })
 
       const switched = runFixture(fixture, command, fixture.diagnosticManifest)
       assert.equal(count(switched.stdout, 'prepared IDF dependencies:'), 2, `${command}: switched preparation`)
       invocations = readInvocations(fixture.commandLog)
-      assert.equal(invocations.length, 5)
-      assertCommandPair(invocations.slice(3), command, fixture.diagnosticManifest)
+      assert.equal(invocations.length, 2 + 3 * phases.length)
+      assertCommandPair(invocations.slice(firstLength + phases.length), command, fixture.diagnosticManifest)
     } finally {
       rmSync(fixture.root, { recursive: true, force: true })
     }
@@ -194,7 +198,8 @@ if (targetIndex >= 0 && args[targetIndex + 1] === 'clean') {
 ) {
   process.exit(12)
 }
-if (targetIndex >= 0 && args[targetIndex + 1] === 'deploy') {
+if (targetIndex >= 0 && args[targetIndex + 1] === 'build') {
+  if (process.env.STACKCHAN_TEST_BUILD_EXIT) process.exit(Number(process.env.STACKCHAN_TEST_BUILD_EXIT))
   const build = path.join(path.dirname(path.dirname(idfManifest)), 'build')
   mkdirSync(build, { recursive: true })
   writeFileSync(path.join(build, 'xs_esp32.bin'), 'fixture image')
@@ -257,12 +262,15 @@ function readInvocations(commandLog) {
 }
 
 function assertCommandPair(invocations, command, manifestPath) {
-  assert.equal(invocations.length, 2)
-  const [clean, main] = invocations
+  const phases = command === 'deploy' ? ['build', 'deploy'] : [command]
+  assert.equal(invocations.length, phases.length + 1)
+  const [clean, ...main] = invocations
   assert.equal(clean[clean.indexOf('-p') + 1], 'esp32:./host/platforms/m5stackchan_cores3')
   assert.equal(clean[clean.indexOf('-t') + 1], 'clean')
   assert.equal(clean.at(-1), manifestPath)
-  assertMainCommand(main, command, manifestPath)
+  phases.forEach((phase, index) => {
+    assertMainCommand(main[index], phase, manifestPath)
+  })
 }
 
 function assertMainCommand(invocation, command, manifestPath) {
@@ -302,6 +310,35 @@ test('deployment fails when independent verification fails despite mcconfig succ
     assert.equal(result.status, 7, result.stderr)
     assert.doesNotMatch(result.stdout, /Host installation verified/)
     assert.equal(readInvocations(fixture.commandLog).at(-1).includes('deploy'), true)
+  } finally {
+    rmSync(fixture.root, { recursive: true, force: true })
+  }
+})
+
+test('deployment builds before upload and a failed compilation prevents deployment', () => {
+  const fixture = createFirmwareWrapperFixture()
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ['scripts/firmware.mjs', 'deploy', '--mode=instrument', '--manifest', fixture.normalManifest],
+      {
+        cwd: fixture.firmware,
+        encoding: 'utf8',
+        env: {
+          ...process.env,
+          MODDABLE: fixture.fakeModdable,
+          PATH: `${fixture.fakeBin}${path.delimiter}${process.env.PATH}`,
+          STACKCHAN_TEST_COMMAND_LOG: fixture.commandLog,
+          STACKCHAN_TEST_BUILD_EXIT: '9',
+          STACKCHAN_DRY_RUN: '',
+          npm_config_target: '',
+        },
+      },
+    )
+    assert.equal(result.status, 9, result.stderr)
+    const phases = readInvocations(fixture.commandLog).map((args) => args[args.indexOf('-t') + 1])
+    assert.deepEqual(phases, ['clean', 'build'])
+    assert.doesNotMatch(result.stdout, /Host installation verified/)
   } finally {
     rmSync(fixture.root, { recursive: true, force: true })
   }
