@@ -49,6 +49,7 @@ static JoyVoice *owner;
 // The worker owns all inference/reset calls. XS only submits bounded copied frames.
 static void joy_voice_worker(void *argument) {
     JoyVoice *voice = argument;
+    printf("[joy-voice] recognition worker core=%d\n", xPortGetCoreID());
     JoyFrame frame;
     uint32_t generation = 0;
     int mode = 0;
@@ -224,9 +225,13 @@ void xs_joy_voice_constructor(xsMachine *the) {
         voice->queue = xQueueCreateStatic(JOY_QUEUE_FRAMES, sizeof(JoyFrame), voice->queue_storage, &voice->queue_control);
     voice->done = xSemaphoreCreateBinary();
     if (!voice->queue || !voice->done) xsUnknownError("No memory for voice worker queue");
-    // The XS microphone producer runs at priority 4. Drain capture callbacks
-    // before inference so model work cannot starve delivery of new audio.
-    if (xTaskCreate(joy_voice_worker, "joyRecognition", 16384, voice, 3, &voice->task) != pdPASS)
+    // Test isolation from the XS caller's current core. Keep inference below
+    // the priority-4 producer; core placement does not replace capture priority.
+    int caller_core = xPortGetCoreID();
+    int recognition_core = 1 - caller_core;
+    printf("[joy-voice] constructor core=%d recognition target=%d\n", caller_core, recognition_core);
+    if (xTaskCreatePinnedToCore(joy_voice_worker, "joyRecognition", 16384, voice, 3, &voice->task,
+            recognition_core) != pdPASS)
         xsUnknownError("Cannot start voice recognition worker");
 }
 void xs_joy_voice_chunk(xsMachine *the) { xsmcSetInteger(xsResult, get_voice(the)->chunk); }
