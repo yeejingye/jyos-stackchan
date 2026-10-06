@@ -1,5 +1,11 @@
 # Branch and Release Flow
 
+## Joy repository
+
+The personal `yeejingye/jyos-stackchan` repository keeps `main` as its sole development and stable branch. The verified Joy firmware checkpoint is tagged `stable/joy-desk-companion-2026-10-06`. GitHub Actions build, bundle, preview, release, research checks and schematics workflows have been removed; builds, checks and deployment run manually using the repository npm scripts. Release impact of this repository cleanup: none (firmware behavior unchanged).
+
+The branch and automated publication process below describes the upstream Stack-chan project rather than this personal repository.
+
 This repository uses the following branch model for a frozen release:
 
 ```text
