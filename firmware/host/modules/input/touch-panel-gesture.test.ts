@@ -124,3 +124,33 @@ test('uses weighted intensity for position calculation', () => {
   assert.equal(recognizer.getPosition([1, 1, 0]), -50)
   assert.equal(recognizer.getPosition([0, 1, 3]), 75)
 })
+
+test('continuous petting emits alternating swipes without lifting the hand', () => {
+  assert.deepEqual(
+    run([
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+      [0, 1, 0],
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+      [0, 0, 0],
+    ]),
+    ['press', 'forwardSwipe', 'backwardSwipe', 'forwardSwipe', 'release'],
+  )
+})
+test('holding and small reverse movements do not generate repeated swipes', () => {
+  assert.deepEqual(
+    run([
+      [1, 0, 0],
+      [0, 1, 0],
+      [0, 0, 1],
+      [0, 1, 3],
+      [0, 0, 1],
+      [0, 1, 3],
+      [0, 0, 0],
+    ]),
+    ['press', 'forwardSwipe', 'release'],
+  )
+})

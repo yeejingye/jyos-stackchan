@@ -3,11 +3,14 @@ import { Emotion } from 'face-state'
 import { createChime } from 'pomodoro-chime'
 import { CommandWindow } from 'pomodoro-command-window'
 import { createTimerStrip, createVoiceDebugStrip } from 'pomodoro-presentation'
-import { PomodoroTimer } from 'pomodoro-timer'
+import { PomodoroTimer, pomodoroDrawerButtons } from 'pomodoro-timer'
 import Time from 'time'
 import Timer from 'timer'
 
-export function createPomodoro(robot, { canStart = () => true, onStart = () => {}, onEnd = () => {} } = {}) {
+export function createPomodoro(
+  robot,
+  { canStart = () => true, onStart = () => {}, onEnd = () => {}, onActivity = () => {} } = {},
+) {
   // Accumulate unsigned tick deltas so the 32-bit platform counter can wrap safely.
   let previous = Time.ticks >>> 0
   let elapsed = 0
@@ -34,6 +37,7 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     acknowledge: () => cue(new Resource('wake-ready.wav')),
   })
   const cue = (buffer) => {
+    onActivity()
     audioDepth += 1
     adapter?.suspend(true)
     audio = audio
@@ -58,7 +62,12 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
       robot.face.setEmotion(
         snapshot.paused ? Emotion.NEUTRAL : snapshot.phase === 'focus' ? Emotion.DOUBTFUL : Emotion.HAPPY,
       )
-    robot.ui.setDrawerButtonState('joyPause', snapshot.paused)
+    const buttons = pomodoroDrawerButtons(snapshot)
+    const keys = new Set(buttons.map((button) => button.key))
+    for (const key of ['joyStart', 'joyPause', 'joyCancel']) {
+      if (!keys.has(key)) robot.ui.removeDrawerButton(key)
+    }
+    for (const button of buttons) robot.ui.addDrawerButton(button)
     if (events.includes('finished') || events.includes('cancelled')) {
       releasing = true
       robot.face.setEmotion(Emotion.NEUTRAL)
@@ -75,6 +84,9 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     get active() {
       return timer.active
     },
+    get voiceBusy() {
+      return audioDepth > 0 || window.listening
+    },
     get foreground() {
       return timer.active || releasing
     },
@@ -83,6 +95,7 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     },
     window,
     command(command) {
+      onActivity()
       if (command === 'pomodoro' && !timer.active && (releasing || !canStart())) return false
       render(timer.command(command))
       return true
@@ -107,7 +120,7 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
     setMuted(value) {
       window.setMuted(value)
       adapter?.mute(value)
-      robot.ui.setDrawerButtonState('joyMute', value)
+      robot.ui.setDrawerButtonState('joyMute', !value)
     },
     close() {
       closed = true
@@ -128,10 +141,15 @@ export function createPomodoro(robot, { canStart = () => true, onStart = () => {
   robot.ui.bindDrawerAction('joyCancel', () => controller.command('cancel'))
   robot.ui.bindDrawerAction('joyMute', () => controller.setMuted(!window.muted))
   for (const button of [
-    { key: 'joyStart', label: 'Pomodoro' },
-    { key: 'joyPause', label: 'Pause / resume', kind: 'toggle' },
-    { key: 'joyCancel', label: 'Cancel timer' },
-    { key: 'joyMute', label: 'Mute Hi Joy', kind: 'toggle' },
+    ...pomodoroDrawerButtons(timer.snapshot()),
+    {
+      key: 'joyMute',
+      label: 'Listening',
+      subtitle: 'Hi Joy voice commands',
+      group: 'Voice',
+      kind: 'toggle',
+      active: true,
+    },
   ])
     robot.ui.addDrawerButton(button)
   const ticker = Timer.repeat(() => {

@@ -35,6 +35,8 @@ export class GestureRecognizer {
   #initialPosition = 0
   #initialTicks = 0
   #maxMovement = 0
+  #swipeDirection = 0
+  #swipeExtreme = 0
   #touchThreshold: number
   #swipeThreshold: number
   #tapMaxDuration: number
@@ -86,10 +88,14 @@ export class GestureRecognizer {
           this.#maxMovement = Math.max(this.#maxMovement, Math.abs(delta))
           if (delta > this.#swipeThreshold) {
             this.#state = TouchState.SWIPING
+            this.#swipeDirection = 1
+            this.#swipeExtreme = this.getPosition(sample)
             return { type: 'forwardSwipe', sample: [...sample], ticks }
           }
           if (delta < -this.#swipeThreshold) {
             this.#state = TouchState.SWIPING
+            this.#swipeDirection = -1
+            this.#swipeExtreme = this.getPosition(sample)
             return { type: 'backwardSwipe', sample: [...sample], ticks }
           }
         }
@@ -99,6 +105,16 @@ export class GestureRecognizer {
         if (!this.#isTouched(sample)) {
           this.#state = TouchState.IDLE
           return { type: 'release', sample: [...sample], ticks }
+        }
+        {
+          const position = this.getPosition(sample)
+          this.#swipeExtreme =
+            this.#swipeDirection > 0 ? Math.max(this.#swipeExtreme, position) : Math.min(this.#swipeExtreme, position)
+          if ((position - this.#swipeExtreme) * this.#swipeDirection < -this.#swipeThreshold) {
+            this.#swipeDirection *= -1
+            this.#swipeExtreme = position
+            return { type: this.#swipeDirection > 0 ? 'forwardSwipe' : 'backwardSwipe', sample: [...sample], ticks }
+          }
         }
         break
     }

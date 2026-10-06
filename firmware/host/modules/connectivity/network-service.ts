@@ -169,8 +169,8 @@ export class NetworkService {
 
     // Setting time for TLS connection
     const sntpHost = typeof config.sntp === 'string' ? config.sntp : undefined
-    if (!sntpHost || Date.now() > 1672722071_000) {
-      trace('Time·already configured, skipping\n')
+    if (!sntpHost) {
+      trace('Network time synchronization not configured, skipping\n')
       this.#handleConnected?.()
       return
     }

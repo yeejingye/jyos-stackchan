@@ -1,0 +1,6 @@
+{
+  "modules": {
+    "desk-companion-controller": "./controller",
+    "desk-companion-adapter": "./adapter"
+  }
+}

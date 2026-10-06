@@ -5,6 +5,10 @@
 | [JYOS hello](jyos-hello/README.md) | Complete | Greeting and small movement observed | Pushed: `2751159e`; committed directly, no PR |
 | [Research companion](research-companion/feature.md) | Complete | 405 unit / 36 companion / 79 architecture tests, six-target manifest checks, real launcher/hooks and user-confirmed hardware lifecycle | [PR #3](https://github.com/yeejingye/jyos-stackchan/pull/3) merged before [PR #2](https://github.com/yeejingye/jyos-stackchan/pull/2) into jyos-stackchan on 2026-10-04; `de40965e`; issue #1 closed |
 
+## Features awaiting acceptance
+
+- [Desk companion](desk-companion/README.md): implemented; drawer trigger and 15-minute inactivity sweep, hardware acceptance pending.
+
 ## Proposed features
 
 - [Voice-controlled Pomodoro](pomodoro/feature.md): current specification focus; 20-minute focus, 5-minute rest and voice pause/cancel.

@@ -79,6 +79,9 @@ export type Button = {
 }
 
 export type DrawerButtonSpec = {
+  group?: string
+  subtitle?: string
+  tone?: 'accent' | 'danger'
   key: string
   label: string
   callback: (context: StackchanContext, value?: string) => unknown

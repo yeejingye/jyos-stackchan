@@ -70,7 +70,8 @@ test('NetworkService synchronizes time after IP when sntp is configured', async 
   const { NetworkService, time } = await setup({ sntp: 'pool.ntp.org' })
   const service = new NetworkService({ ssid: 'stackchan-ap', password: 'secret' })
   const originalNow = Date.now
-  Date.now = () => 0
+  // A plausible retained clock can still drift; it must refresh on connection.
+  Date.now = () => Date.UTC(2026, 9, 6, 12)
 
   try {
     service.connect()

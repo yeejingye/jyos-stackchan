@@ -91,6 +91,8 @@
     "erase-flash": "esptool erase-flash",
     "install-hook": "lefthook install",
     "uninstall-hook": "lefthook uninstall",
+    "test:drawer:build": "node scripts/run-mcconfig.mjs -d -m -p mac -t build host/modules/ui/components/drawer/__tests__/drawer-panel/manifest.test.json",
+    "test:desk": "node --test mods/desk_companion/*.test.mjs",
     "test:pomodoro": "node --test mods/pomodoro/*.test.mjs",
     "voice:prepare": "node scripts/prepare-voice-models.mjs",
     "build:joy-voice": "node scripts/firmware.mjs build m5stackchan_cores3 --mode=release --manifest host/app/manifest_m5stackchan_cores3_joy_voice.json",

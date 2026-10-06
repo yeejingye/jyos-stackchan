@@ -64,3 +64,18 @@ export function countdown(remainingMs) {
     .toString()
     .padStart(2, '0')}:${(seconds % 60).toString().padStart(2, '0')}`
 }
+
+export function pomodoroDrawerButtons(snapshot) {
+  const group = 'Pomodoro'
+  if (snapshot.phase === 'idle')
+    return [{ key: 'joyStart', label: 'Start focus', subtitle: '20 min focus / 5 min rest', group, tone: 'accent' }]
+  return [
+    {
+      key: 'joyPause',
+      label: snapshot.paused ? 'Resume' : 'Pause',
+      subtitle: `${snapshot.phase === 'focus' ? 'Focus' : 'Rest'} ${countdown(snapshot.remainingMs)}${snapshot.paused ? ' / paused' : ''}`,
+      group,
+    },
+    { key: 'joyCancel', label: 'Cancel timer', group, tone: 'danger' },
+  ]
+}

@@ -168,11 +168,23 @@ export class StackchanRuntimeUI {
     this.#ui.update(interval, this.#faceState)
   }
 
-  private addDrawerButton({ key, label, callback, kind, initialState, value, options, icon }: DrawerButtonSpec): void {
-    const spec = { key, label, callback, kind, initialState, value, options, icon }
+  private addDrawerButton({
+    key,
+    label,
+    callback,
+    kind,
+    initialState,
+    value,
+    options,
+    icon,
+    group,
+    subtitle,
+    tone,
+  }: DrawerButtonSpec): void {
+    const spec = { key, label, callback, kind, initialState, value, options, icon, group, subtitle, tone }
     this.#drawerButtonSpecs.set(key, spec)
     this.bindDrawerButton(spec)
-    this.#ui.addDrawerButton({ key, label, kind, value, options, icon })
+    this.#ui.addDrawerButton({ key, label, kind, value, options, icon, group, subtitle, tone })
     if (initialState !== undefined) {
       this.setDrawerButtonState(key, initialState)
     }

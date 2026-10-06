@@ -7,6 +7,7 @@ export type TimezoneId =
   | 'sao-paulo'
   | 'london'
   | 'paris'
+  | 'berlin'
   | 'cairo'
   | 'moscow'
   | 'dubai'
@@ -33,6 +34,7 @@ export const TIMEZONE_PRESETS: readonly TimezonePreset[] = Object.freeze([
   { id: 'new-york', labelKey: 'timezone.city.newYork', offsetMinutes: -5 * 60 },
   { id: 'sao-paulo', labelKey: 'timezone.city.saoPaulo', offsetMinutes: -3 * 60 },
   { id: 'london', labelKey: 'timezone.city.london', offsetMinutes: 0 },
+  { id: 'berlin', labelKey: 'timezone.city.berlin', offsetMinutes: 60 },
   { id: 'paris', labelKey: 'timezone.city.paris', offsetMinutes: 1 * 60 },
   { id: 'cairo', labelKey: 'timezone.city.cairo', offsetMinutes: 2 * 60 },
   { id: 'moscow', labelKey: 'timezone.city.moscow', offsetMinutes: 3 * 60 },
@@ -70,4 +72,15 @@ export function formatUtcOffset(offsetMinutes: number): string {
   const hours = Math.floor(absoluteMinutes / 60)
   const minutes = absoluteMinutes % 60
   return `UTC${sign}${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`
+}
+
+// Berlin switches at 01:00 UTC on the last Sunday of March/October.
+export function timezoneDstSeconds(id: TimezoneId, utcMs: number): number {
+  if (id !== 'berlin' || !Number.isFinite(utcMs)) return 0
+  const year = new Date(utcMs).getUTCFullYear()
+  const boundary = (month: number) => {
+    const lastDay = new Date(Date.UTC(year, month + 1, 0))
+    return Date.UTC(year, month, lastDay.getUTCDate() - lastDay.getUTCDay(), 1)
+  }
+  return utcMs >= boundary(2) && utcMs < boundary(9) ? 3600 : 0
 }

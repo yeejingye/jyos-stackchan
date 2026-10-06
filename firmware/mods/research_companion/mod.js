@@ -3,6 +3,7 @@ import { CompletionGate } from 'companion-completion-gate'
 import { FlowRegistry } from 'companion-flow-registry'
 import { FlowRunner } from 'companion-flow-runner'
 import { timerFlow } from 'companion-timer-flow'
+import { createDeskCompanion } from 'desk-companion-adapter'
 import { Emotion } from 'face-state'
 import { Request } from 'http'
 import config from 'mod/config'
@@ -12,6 +13,7 @@ import { attachLocalVoice } from 'pomodoro-voice-adapter'
 import Preference from 'preference'
 import { PRESENTATION, SnapshotCursor, validateSnapshot } from 'research-status'
 import { createStatusCard } from 'research-status-card'
+import Time from 'time'
 import Timer from 'timer'
 
 const POLL_MS = 2000
@@ -31,6 +33,8 @@ export function onContextCreated(robot) {
   let watchdog
   let pulse = false
   let pomodoro
+  let desk
+  let deskStartRevision = 0
   let admittedCompletion
 
   const show = (text, emotion, displayPhase = 'setup', title) => {
@@ -109,6 +113,7 @@ export function onContextCreated(robot) {
           runner.dismiss()
           return
         }
+        await desk.activity()
         await pomodoro.suspendCompletion(true)
         try {
           await definition.complete(snapshot, current)
@@ -178,7 +183,21 @@ export function onContextCreated(robot) {
   })
   const deferred = new DeferredCompletion((snapshot) => gate.consume(snapshot))
   pomodoro = createPomodoro(robot, {
-    canStart: () => !runner.runningHardware,
+    canStart: () => {
+      if (runner.runningHardware) return false
+      if (desk?.running) {
+        const revision = deskStartRevision
+        void desk.activity().then(() => {
+          if (revision === deskStartRevision) pomodoro.command('pomodoro')
+        })
+        return false
+      }
+      return true
+    },
+    onActivity: () => {
+      deskStartRevision += 1
+      void desk?.activity()
+    },
     onStart: () => {
       expressionRevision += 1
       runner.reset()
@@ -196,6 +215,17 @@ export function onContextCreated(robot) {
       }
     },
   })
+  desk = createDeskCompanion(robot, () =>
+    pomodoro.foreground
+      ? 'pomodoro'
+      : pomodoro.voiceBusy
+        ? 'voice'
+        : runner.runningHardware
+          ? 'completion'
+          : runner.key && !runner.dismissed
+            ? 'research'
+            : '',
+  )
   if (config.joyVoice?.enabled !== false) attachLocalVoice(robot, pomodoro, config.joyVoice)
   const offline = (text = 'Mac disconnected') => {
     connected = false
@@ -232,7 +262,25 @@ export function onContextCreated(robot) {
         host: settings.host,
         port: settings.port,
         path: '/v1/state',
-        headers: ['Authorization', `Bearer ${settings.token}`, 'X-StackChan-Client', 'robot'],
+        headers: [
+          'Authorization',
+          `Bearer ${settings.token}`,
+          'X-StackChan-Client',
+          'robot',
+          'X-StackChan-Runtime',
+          JSON.stringify({
+            utcMs: Date.now(),
+            timezone: Preference.get('time', 'timezone') ?? config.time?.timezone ?? 'tokyo',
+            offsetSeconds: Time.timezone,
+            dstSeconds: Time.dst,
+            touchPresent: !!robot.touchPanel,
+            touchSamples: robot.touchPanel ? [...robot.touchPanel.sample] : [],
+            lastGesture: desk.lastGesture ?? null,
+            touchEvents: desk.touchEvents,
+            blockedBy: desk.busy(),
+            motion: desk.mode ?? 'idle',
+          }),
+        ],
         response: String,
       })
       activeRequest.callback = (message, value) => {
@@ -247,6 +295,7 @@ export function onContextCreated(robot) {
             if (snapshot.serviceId === cursor.serviceId && snapshot.revision < cursor.revision) {
               throw new Error('Stale snapshot')
             }
+            if (snapshot.serviceId !== cursor.serviceId || snapshot.revision !== cursor.revision) void desk.activity()
             cursor.accept(snapshot)
             phase = snapshot.phase
             flowId = snapshot.flowId ?? 'research'

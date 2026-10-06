@@ -1,5 +1,5 @@
 import Time from 'time'
-import { getTimezonePreset, type TimezoneId } from 'timezone-model'
+import { getTimezonePreset, type TimezoneId, timezoneDstSeconds } from 'timezone-model'
 
 export type { TimezoneId, TimezonePreset } from 'timezone-model'
 export {
@@ -10,9 +10,9 @@ export {
   TIMEZONE_PRESETS,
 } from 'timezone-model'
 
-export function applyTimezone(value: unknown): TimezoneId {
+export function applyTimezone(value: unknown, utcMs = Date.now()): TimezoneId {
   const preset = getTimezonePreset(value)
   Time.timezone = preset.offsetMinutes * 60
-  Time.dst = 0
+  Time.dst = timezoneDstSeconds(preset.id, utcMs)
   return preset.id
 }

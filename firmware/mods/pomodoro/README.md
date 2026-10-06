@@ -4,7 +4,7 @@ Local command interface for one **20-minute focus + 5-minute rest** cycle. No LL
 
 Say **Hi Joy**, wait for “Hi JY. What can I help you?”, then say **Tomato**, **pause**, **resume** or **cancel** within five seconds after the prompt finishes. Repeat-start preserves the running or paused session. Cancel and the end of rest return to the normal face. Reboot discards the session.
 
-The translucent bottom strip shows the countdown. Open the normal drawer for Pomodoro, Pause / resume, Cancel timer and Mute Hi Joy. Mute affects recognition, not the timer.
+The translucent bottom strip shows the countdown. Open the normal drawer for Start focus, state-aware Pause / Resume and Cancel timer, and a Listening switch for Hi Joy. Mute affects recognition, not the timer.
 
 ## Install on M5StackChan CoreS3
 

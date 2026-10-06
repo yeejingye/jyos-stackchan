@@ -18,6 +18,7 @@ export function createCompanionServer({
   let state = stateRecord ? ResearchState.restore(stateRecord) : new ResearchState(serviceId)
   let mutation = Promise.resolve()
   let detecting = false
+  let deviceStatus = null
   let diagnostic = null
   return createServer(async (req, res) => {
     const reply = (status, body) => {
@@ -32,7 +33,17 @@ export function createCompanionServer({
       return
     }
     if (req.method === 'GET' && req.url === '/v1/state') {
-      if (req.headers['x-stackchan-client'] === 'robot') onRobotPoll()
+      if (req.headers['x-stackchan-client'] === 'robot') {
+        onRobotPoll()
+        const header = req.headers['x-stackchan-runtime']
+        if (typeof header === 'string' && header.length <= 1024) {
+          try {
+            const value = JSON.parse(header)
+            if (value && typeof value === 'object' && !Array.isArray(value))
+              deviceStatus = { ...value, receivedAt: Date.now() }
+          } catch {}
+        }
+      }
       reply(200, state.snapshot)
       return
     }
@@ -60,6 +71,10 @@ export function createCompanionServer({
         console.log(`Robot completion: ${stage}`)
       }
       reply(200, diagnostic)
+      return
+    }
+    if (req.method === 'GET' && req.url === '/v1/device-status') {
+      reply(200, deviceStatus)
       return
     }
     if (req.method === 'GET' && req.url === '/v1/completion.wav') {

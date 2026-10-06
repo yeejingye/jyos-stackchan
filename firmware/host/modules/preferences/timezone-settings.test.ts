@@ -36,6 +36,7 @@ test('time zone presets expose the agreed fixed UTC offsets', () => {
       ['new-york', -300],
       ['sao-paulo', -180],
       ['london', 0],
+      ['berlin', 60],
       ['paris', 60],
       ['cairo', 120],
       ['moscow', 180],
@@ -72,4 +73,22 @@ test('UTC offsets are formatted with an explicit sign and minute component', () 
   assert.equal(formatUtcOffset(-480), 'UTC-08:00')
   assert.equal(formatUtcOffset(0), 'UTC+00:00')
   assert.equal(formatUtcOffset(330), 'UTC+05:30')
+})
+
+test('Berlin follows independent IANA offsets including the daylight-saving boundaries', () => {
+  const formatter = new Intl.DateTimeFormat('en', { timeZone: 'Europe/Berlin', timeZoneName: 'shortOffset' })
+  for (const iso of [
+    '2026-01-01T12:00:00Z',
+    '2026-03-29T00:59:59Z',
+    '2026-03-29T01:00:00Z',
+    '2026-10-06T12:00:00Z',
+    '2026-10-25T00:59:59Z',
+    '2026-10-25T01:00:00Z',
+  ]) {
+    const date = new Date(iso)
+    applyTimezone('berlin', date.getTime())
+    const zone = formatter.formatToParts(date).find((part) => part.type === 'timeZoneName')?.value
+    const offsetHours = Number(zone?.replace('GMT', ''))
+    assert.equal((Time.timezone + Time.dst) / 3600, offsetHours)
+  }
 })

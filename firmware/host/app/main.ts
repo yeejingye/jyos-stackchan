@@ -12,6 +12,7 @@ import { prepareExperimentalMiniApps, registerExperimentalMiniApps } from 'exper
 import { initializeLocalization } from 'localization'
 import Modules from 'modules'
 import { showStartupSplash, showWiFiConnectionStatus, showWiFiRecoveryChoice } from 'startup-splash'
+import Timer from 'timer'
 import { applyTimezone } from 'timezone-settings'
 
 type DeviceButton = {
@@ -103,6 +104,8 @@ async function main() {
     installPlatformInputBridge()
     initializeLocalization(loadPreferences(DOMAIN.ui).language)
     applyTimezone(loadPreferences(DOMAIN.time).timezone)
+    // Re-evaluate after network time sync and across daylight-saving boundaries.
+    Timer.repeat(() => applyTimezone(loadPreferences(DOMAIN.time).timezone), 1000)
 
     trace('[main] loading app behaviors\n')
     const appBehaviors = loadAppBehaviors()

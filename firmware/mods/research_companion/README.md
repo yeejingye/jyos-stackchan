@@ -171,3 +171,7 @@ With `--config`, the Mac service persists its snapshot and retired task IDs in `
 ## Acceptance and runtime connection
 
 See the [acceptance record](../../../knowledge_base/feat/research-companion/acceptance.md). Runtime requires Wi-Fi and power, not a USB data connection. USB remains useful for flashing and diagnostics. Keep the Mac service running while Claude researches.
+
+## Desk companion
+
+The drawer includes Look around and Auto look-around. Joy makes a gentle sweep after 15 quiet minutes. Pomodoro and research have priority. See [feature](../../../knowledge_base/feat/desk-companion/feature.md).

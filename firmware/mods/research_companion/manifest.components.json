@@ -1,5 +1,8 @@
 {
-  "include": ["../pomodoro/manifest.components.json"],
+  "include": [
+    "../pomodoro/manifest.components.json",
+    "../desk_companion/manifest.components.json"
+  ],
   "modules": {
     "research-status": "./research-status",
     "research-status-card": "./status-card",

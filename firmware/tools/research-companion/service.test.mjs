@@ -130,3 +130,30 @@ test('malformed, oversized, unsupported requests do not mutate service state', a
   assert.equal((await request('/v1/events', { method: 'GET' })).status, 404)
   assert.equal((await (await request('/v1/state')).json()).phase, 'idle')
 })
+
+test('authenticated robot status helps diagnose touch and clock without changing research state', async (t) => {
+  const request = await fixture(t)
+  assert.equal((await request('/v1/device-status', { headers: { Authorization: 'invalid' } })).status, 401)
+  const before = await (await request('/v1/state')).json()
+  await request('/v1/state', {
+    headers: {
+      'X-StackChan-Client': 'robot',
+      'X-StackChan-Runtime': JSON.stringify({
+        touchPresent: true,
+        touchSamples: [0, 1, 0],
+        utcMs: 1700000000000,
+        timezone: 'tokyo',
+        blockedBy: '',
+      }),
+    },
+  })
+  const status = await (await request('/v1/device-status')).json()
+  assert.equal(status.touchPresent, true)
+  assert.deepEqual(status.touchSamples, [0, 1, 0])
+  assert.equal(status.timezone, 'tokyo')
+  for (const header of ['{', JSON.stringify(['bad']), 'x'.repeat(1025)]) {
+    await request('/v1/state', { headers: { 'X-StackChan-Client': 'robot', 'X-StackChan-Runtime': header } })
+    assert.deepEqual(await (await request('/v1/device-status')).json(), status)
+  }
+  assert.deepEqual(await (await request('/v1/state')).json(), before)
+})

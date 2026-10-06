@@ -1,3 +1,4 @@
+import { Outline } from 'commodetto/outline'
 import { localize } from 'localization'
 import {
   Column,
@@ -12,6 +13,7 @@ import {
   Style,
 } from 'piu/MC'
 import Timeline from 'piu/Timeline'
+import { defineShapeTemplate } from 'template'
 import { type IconName, IconView } from 'ui-controls'
 import { UI, uiFont } from 'ui-theme'
 
@@ -31,9 +33,12 @@ export type DrawerButtonViewSpec = {
   value?: string
   options?: DrawerOption[]
   icon?: IconName
+  group?: string
+  subtitle?: string
+  tone?: 'accent' | 'danger'
 }
 
-const drawerWidth = 160
+const drawerWidth = 220
 const drawerHiddenOffset = -drawerWidth - 1
 const SCROLL_THRESHOLD = 8
 
@@ -45,6 +50,9 @@ type DrawerSkins = {
   drawerButtonStyle: Style
   toggleOnSkin: Skin
   toggleOffSkin: Skin
+  mutedStyle: Style
+  sectionStyle: Style
+  accentSkin: Skin
 }
 
 let cachedSkins: DrawerSkins | null = null
@@ -55,13 +63,16 @@ function getDrawerSkins(): DrawerSkins {
   if (cachedSkins && cachedFont === font) return cachedSkins
   cachedFont = font
   cachedSkins = {
-    scrollerSkin: new Skin({ fill: UI.colors.surface }),
-    drawerSkin: new Skin({ fill: UI.colors.surface }),
+    scrollerSkin: new Skin({ fill: UI.colors.background }),
+    drawerSkin: new Skin({ fill: UI.colors.background }),
     drawerButtonSkin: new Skin({ fill: UI.colors.surface }),
     drawerButtonPressedSkin: new Skin({ fill: UI.colors.surfacePressed }),
     drawerButtonStyle: new Style({ font, color: UI.colors.text, horizontal: 'left' }),
-    toggleOnSkin: new Skin({ fill: UI.colors.success }),
+    toggleOnSkin: new Skin({ fill: '#12656c' }),
     toggleOffSkin: new Skin({ fill: UI.colors.disabled }),
+    mutedStyle: new Style({ font, color: UI.colors.textMuted, horizontal: 'left' }),
+    sectionStyle: new Style({ font, color: '#9cbac0', horizontal: 'left' }),
+    accentSkin: new Skin({ fill: '#12656c' }),
   }
   return cachedSkins
 }
@@ -92,13 +103,43 @@ class DrawerScrollerBehavior extends Behavior {
   }
 }
 
+const RoundedSurface = defineShapeTemplate((data: { width: number; height: number; radius: number; skin: Skin }) => ({
+  width: data.width,
+  height: data.height,
+  skin: data.skin,
+  fillOutline: Outline.fill(Outline.RoundRectPath(0, 0, data.width, data.height, data.radius)),
+}))
+
 const DrawerButton = Container.template(($: DrawerButtonViewSpec) => {
   const skins = getDrawerSkins()
   const isToggle = $.kind === 'toggle'
   const isChoice = $.kind === 'choice' || $.kind === 'swatch'
   const contents: PiuContent[] = []
+  const rowHeight = isChoice || $.subtitle ? 56 : 48
+  contents.push(
+    new RoundedSurface(
+      {
+        width: drawerWidth - 16,
+        height: rowHeight - 4,
+        radius: 8,
+        skin: $.tone === 'accent' ? skins.accentSkin : skins.drawerButtonSkin,
+      },
+      { name: 'card', left: 0, top: 0 },
+    ),
+  )
   if (isToggle) {
-    contents.push(new Content(null, { left: 12, width: 16, height: 16, top: 14, skin: skins.toggleOffSkin }))
+    contents.push(
+      new RoundedSurface(
+        { width: 32, height: 18, radius: 9, skin: $.active ? skins.toggleOnSkin : skins.toggleOffSkin },
+        { name: 'toggle', right: 12, top: 14 },
+      ),
+    )
+    contents.push(
+      new RoundedSurface(
+        { width: 14, height: 14, radius: 7, skin: new Skin({ fill: UI.colors.text }) },
+        { name: 'knob', right: $.active ? 14 : 28, top: 16 },
+      ),
+    )
   }
   if (!isToggle && !isChoice && $.icon) {
     contents.push(
@@ -107,15 +148,31 @@ const DrawerButton = Container.template(($: DrawerButtonViewSpec) => {
   }
   contents.push(
     new Label(null, {
-      left: isToggle || (!isChoice && $.icon) ? 36 : 12,
-      right: 12,
-      top: isChoice ? 4 : 0,
-      height: isChoice ? 20 : undefined,
-      bottom: isChoice ? undefined : 0,
+      name: 'label',
+      left: !isChoice && $.icon ? 36 : 12,
+      right: isToggle ? 50 : 12,
+      top: isChoice || $.subtitle ? 6 : 0,
+      height: isChoice || $.subtitle ? 20 : undefined,
+      bottom: isChoice || $.subtitle ? undefined : 4,
       string: $.label ?? 'Button',
-      style: skins.drawerButtonStyle,
+      style:
+        $.tone === 'danger'
+          ? new Style({ font: uiFont(), color: UI.colors.error, horizontal: 'left' })
+          : skins.drawerButtonStyle,
     }),
   )
+  if ($.subtitle && !isChoice)
+    contents.push(
+      new Label(null, {
+        name: 'subtitle',
+        left: 12,
+        right: 12,
+        top: 29,
+        height: 16,
+        string: $.subtitle,
+        style: skins.mutedStyle,
+      }),
+    )
   if (isChoice) {
     const selected = $.options?.find((option) => option.value === $.value)
     if ($.kind === 'swatch' && selected?.color) {
@@ -137,11 +194,10 @@ const DrawerButton = Container.template(($: DrawerButtonViewSpec) => {
   }
   return {
     name: $.key,
-    left: 0,
-    right: 0,
-    height: isChoice ? 52 : 44,
+    left: 8,
+    right: 8,
+    height: rowHeight,
     active: true,
-    skin: skins.drawerButtonSkin,
     contents,
     Behavior: class extends Behavior {
       action?: string
@@ -154,8 +210,8 @@ const DrawerButton = Container.template(($: DrawerButtonViewSpec) => {
       onCreate(content: PiuContainer, data: DrawerButtonViewSpec) {
         this.action = data.key
         this.kind = data.kind
-        this.icon = data.kind === 'toggle' ? (content.first as PiuContent | null) : null
-        this.label = data.kind === 'toggle' ? (content.last as PiuContent | null) : content.first
+        this.icon = data.kind === 'toggle' ? (content.content('toggle') as PiuContent) : null
+        this.label = content.content('label') as PiuContent
         if (this.icon && data.active !== undefined) {
           this.icon.skin = data.active ? skins.toggleOnSkin : skins.toggleOffSkin
         }
@@ -164,25 +220,29 @@ const DrawerButton = Container.template(($: DrawerButtonViewSpec) => {
         this.startX = x
         this.startY = y
         this.moved = false
-        content.skin = skins.drawerButtonPressedSkin
+        if (content.first) content.first.skin = skins.drawerButtonPressedSkin
       }
       onTouchMoved(content: PiuContainer, _id: number, x: number, y: number) {
         const dx = Math.abs(x - this.startX)
         const dy = Math.abs(y - this.startY)
         if (!this.moved && (dx > 6 || dy > 6)) {
           this.moved = true
-          content.skin = skins.drawerButtonSkin
+          if (content.first) content.first.skin = $.tone === 'accent' ? skins.accentSkin : skins.drawerButtonSkin
         }
       }
       onTouchCancelled(content: PiuContainer) {
         this.moved = false
-        content.skin = skins.drawerButtonSkin
+        if (content.first) content.first.skin = $.tone === 'accent' ? skins.accentSkin : skins.drawerButtonSkin
       }
       onTouchEnded(content: PiuContainer) {
-        content.skin = skins.drawerButtonSkin
+        if (content.first) content.first.skin = $.tone === 'accent' ? skins.accentSkin : skins.drawerButtonSkin
         if (!this.moved && this.action) {
           trace(`[DrawerButton] onTouchEnded action=${this.action}\n`)
-          if (this.kind === 'choice' || this.kind === 'swatch') {
+          if (this.action === 'drawerHome') {
+            content.bubble('onDrawerHome')
+          } else if (this.action === 'drawerSettings') {
+            content.bubble('onDrawerSettingsOpen')
+          } else if (this.kind === 'choice' || this.kind === 'swatch') {
             content.bubble('onDrawerChoiceOpen', this.action)
           } else {
             content.bubble(this.action)
@@ -190,9 +250,18 @@ const DrawerButton = Container.template(($: DrawerButtonViewSpec) => {
         }
         this.moved = false
       }
-      setActive(_content: PiuContainer, active: boolean) {
+      setDetails(content: PiuContainer, data: DrawerButtonViewSpec) {
+        const label = content.content('label') as PiuContent & { string: string }
+        if (label) label.string = data.label
+        const subtitle = content.content('subtitle') as PiuContent & { string: string }
+        if (subtitle) subtitle.string = data.subtitle ?? ''
+        if (data.active !== undefined) this.setActive(content, data.active)
+      }
+      setActive(content: PiuContainer, active: boolean) {
         if (!this.icon) return
         this.icon.skin = active ? skins.toggleOnSkin : skins.toggleOffSkin
+        const knob = content.content('knob')
+        if (knob) knob.coordinates = { right: active ? 14 : 28, top: 16 } as Coordinates
       }
     },
   }
@@ -344,11 +413,14 @@ export const Drawer: DrawerTemplateCtor = Container.template((d: DrawerDictionar
       timeline: Timeline | null = null
       offset = drawerHiddenOffset
       buttons: DrawerButtonViewSpec[] = []
+      settingsPage = false
+      choiceKey?: string
 
       onCreate(container: PiuContainer, data?: DrawerDictionary) {
         container.interval = 16
         this.buttons = [...(data?.buttons ?? [])]
         this.buttonList = this.findButtonList(container)
+        if (this.buttonList) this.renderButtons(this.buttonList)
         this.applyPosition(container, this.offset)
       }
       onTimeChanged(container: PiuContainer) {
@@ -400,10 +472,31 @@ export const Drawer: DrawerTemplateCtor = Container.template((d: DrawerDictionar
       addButton(container: PiuContainer, button: DrawerButtonViewSpec) {
         const list = this.getButtonList(container)
         if (!list) return false
+        const previous = this.buttons.find((item) => item.key === button.key)
         const buttonIndex = this.buttons.findIndex((item) => item.key === button.key)
         if (buttonIndex >= 0) this.buttons[buttonIndex] = button
         else this.buttons.push(button)
         const existing = this.findButtonInList(list, button.key)
+        if (!existing) {
+          if (previous || this.settingsPage) return true
+          this.renderButtons(list)
+          return true
+        }
+        if (
+          previous &&
+          previous.kind === button.kind &&
+          previous.group === button.group &&
+          !!previous.subtitle === !!button.subtitle &&
+          previous.tone === button.tone &&
+          button.kind !== 'choice' &&
+          button.kind !== 'swatch'
+        ) {
+          const behavior = existing.behavior as {
+            setDetails?: (content: PiuContainer, data: DrawerButtonViewSpec) => void
+          }
+          behavior?.setDetails?.(existing, button)
+          return true
+        }
         const next = existing?.next as PiuContent | null | undefined
         if (existing) {
           list.remove(existing)
@@ -416,24 +509,39 @@ export const Drawer: DrawerTemplateCtor = Container.template((d: DrawerDictionar
       removeButton(container: PiuContainer, key: string) {
         const list = this.getButtonList(container)
         if (!list) return false
-        const button = this.findButtonInList(list, key)
-        if (!button) return false
-        list.remove(button)
+        if (!this.buttons.some((item) => item.key === key)) return false
         this.buttons = this.buttons.filter((item) => item.key !== key)
+        this.renderButtons(list)
         return true
       }
       onDrawerChoiceOpen(container: PiuContainer, key: string) {
         const list = this.getButtonList(container)
         const button = this.buttons.find((item) => item.key === key)
         if (!list || !button?.options) return true
-        list.empty()
-        list.add(new DrawerChoiceBack())
-        for (const option of button.options) {
-          list.add(new DrawerChoice({ key, option, selected: option.value === button.value }))
-        }
+        this.choiceKey = key
+        this.renderButtons(list)
+        this.resetScroll(container)
+        return true
+      }
+      onDrawerSettingsOpen(container: PiuContainer) {
+        this.choiceKey = undefined
+        this.settingsPage = true
+        this.resetScroll(container)
+        const list = this.getButtonList(container)
+        if (list) this.renderButtons(list)
+        return true
+      }
+      onDrawerHome(container: PiuContainer) {
+        this.choiceKey = undefined
+        this.settingsPage = false
+        this.resetScroll(container)
+        const list = this.getButtonList(container)
+        if (list) this.renderButtons(list)
         return true
       }
       onDrawerChoiceBack(container: PiuContainer) {
+        this.choiceKey = undefined
+        this.resetScroll(container)
         const list = this.getButtonList(container)
         if (list) this.renderButtons(list)
         return true
@@ -441,21 +549,74 @@ export const Drawer: DrawerTemplateCtor = Container.template((d: DrawerDictionar
       onDrawerChoiceSelected(container: PiuContainer, selection: { key: string; value: string }) {
         const button = this.buttons.find((item) => item.key === selection.key)
         if (button) button.value = selection.value
+        this.choiceKey = undefined
+        this.resetScroll(container)
         const list = this.getButtonList(container)
         if (list) this.renderButtons(list)
         container.bubble(selection.key, selection.value)
         return true
       }
+      resetScroll(container: PiuContainer) {
+        const scroller = container.first as PiuContent & { scrollTo?: (x: number, y: number) => void }
+        scroller?.scrollTo?.(0, 0)
+      }
       renderButtons(list: PiuContainer) {
         list.empty()
-        for (const button of this.buttons) list.add(new DrawerButton(button))
+        const choice = this.buttons.find((button) => button.key === this.choiceKey)
+        if (choice?.options) {
+          list.add(new DrawerChoiceBack())
+          for (const option of choice.options)
+            list.add(new DrawerChoice({ key: choice.key, option, selected: option.value === choice.value }))
+          return
+        }
+        const grouped = this.buttons.some((button) => button.group)
+        if (!grouped) {
+          for (const button of this.buttons) list.add(new DrawerButton(button))
+          return
+        }
+        list.add(
+          new Label(null, {
+            left: 16,
+            right: 8,
+            height: 36,
+            string: this.settingsPage ? 'Appearance & settings' : 'Joy controls',
+            style: getDrawerSkins().sectionStyle,
+          }),
+        )
+        if (this.settingsPage) {
+          list.add(new DrawerButton({ key: 'drawerHome', label: 'Back to controls', icon: 'back' }))
+          for (const button of this.buttons.filter((button) => !button.group)) list.add(new DrawerButton(button))
+        } else {
+          for (const group of [
+            'Desk companion',
+            'Pomodoro',
+            'Voice',
+            ...new Set(this.buttons.map((button) => button.group).filter(Boolean)),
+          ]) {
+            if (!group || list.content(`section:${group}`)) continue
+            const buttons = this.buttons.filter((button) => button.group === group)
+            if (!buttons.length) continue
+            list.add(
+              new Label(null, {
+                name: `section:${group}`,
+                left: 16,
+                right: 8,
+                height: 28,
+                string: group,
+                style: getDrawerSkins().sectionStyle,
+              }),
+            )
+            for (const button of buttons) list.add(new DrawerButton(button))
+          }
+          list.add(new DrawerButton({ key: 'drawerSettings', label: 'Appearance & settings', icon: 'settings' }))
+        }
       }
       setButtonState(container: PiuContainer, key: string, active: boolean) {
         const list = this.getButtonList(container)
         const button = list ? this.findButtonInList(list, key) : null
-        if (!button) return false
         const spec = this.buttons.find((item) => item.key === key)
         if (spec) spec.active = active
+        if (!button) return !!spec
         const behavior = button.behavior as { setActive?: (content: PiuContainer, state: boolean) => void } | undefined
         behavior?.setActive?.(button, active)
         return true
