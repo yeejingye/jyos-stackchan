@@ -1,5 +1,7 @@
 # Stack-chan
 
+Joy project: [at-a-glance HTML guide](docs/stackchan.html) · [current status and programming docs](docs/joy/README.md). Updated 6 October 2026; personal repository uses stable `main` and manual builds.
+
 [![Build Stack-chan Firmware](https://github.com/stack-chan/stack-chan/actions/workflows/build.yml/badge.svg)](https://github.com/stack-chan/stack-chan/actions/workflows/build.yml)
 [![Discord server invitation](https://img.shields.io/badge/Discord-Join%20server-5865F2?logo=discord&logoColor=white)](https://discord.gg/eGhd9adnBm)
 

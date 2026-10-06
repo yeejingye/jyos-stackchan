@@ -2,6 +2,8 @@
 
 Repository documentation, design decisions, and development evidence. Start here before planning or changing a feature.
 
+For the current 6 October Joy deployment and consolidated programming practices, start with the [new HTML overview](../docs/stackchan.html) and [nested documentation](../docs/joy/README.md). Older records below preserve their original historical checkpoints.
+
 | Document | Purpose |
 | --- | --- |
 | [Joy overview — HTML](stackchan-overview.html) / [Markdown](stackchan-overview.md) | Identity, executive summary, factory capabilities and added features |
