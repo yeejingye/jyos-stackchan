@@ -9,12 +9,13 @@ import { createLocalPeerCapability } from 'local-peer-capability'
 import type { LocalPeerCapability } from 'local-peer-types'
 import { localize } from 'localization'
 import config from 'mc/config'
-import { wait } from 'stackchan-util'
 import { connectStoredWiFi, stopStoredWiFiConnection } from 'stored-wifi'
+import Timer from 'timer'
 
 export type { NetworkReadyResult } from 'capabilities'
 
 export type HostBootServices = {
+  close(): void
   connectivity: {
     network: {
       ready: Promise<NetworkReadyResult>
@@ -31,6 +32,8 @@ export type BootWiFiStatus = {
 
 export type HostBootServicesOptions = {
   wifi?: {
+    retryInBackground?: boolean
+    attemptTimeoutMs?: number
     maxAttempts?: number
     retryDelayMs?: number
     onStatusChanged?: (status: BootWiFiStatus) => void
@@ -54,7 +57,13 @@ const NOT_STARTED: NetworkReadyResult = {
 const DEFAULT_BOOT_WIFI_MAX_ATTEMPTS = 3
 const DEFAULT_BOOT_WIFI_RETRY_DELAY_MS = 500
 
+type BootConnectionLifetime = {
+  closed: boolean
+  cancel?: () => void
+}
+
 let bootServices: HostBootServices = {
+  close() {},
   connectivity: {
     network: {
       ready: Promise.resolve(NOT_STARTED),
@@ -63,9 +72,16 @@ let bootServices: HostBootServices = {
 }
 
 export function startHostBootServices(options: HostBootServicesOptions = {}): HostBootServices {
-  const networkReady = startStoredWiFi(options.wifi)
+  const lifetime: BootConnectionLifetime = { closed: false }
   const localPeer = createLocalPeerCapability()
+  const networkReady = startStoredWiFi(lifetime, options.wifi)
   bootServices = {
+    close() {
+      if (lifetime.closed) return
+      lifetime.closed = true
+      lifetime.cancel?.()
+      stopStoredWiFiConnection()
+    },
     connectivity: {
       network: {
         ready: networkReady,
@@ -81,11 +97,13 @@ export function getHostBootServices(): HostBootServices {
 }
 
 async function startStoredWiFi(
+  lifetime: BootConnectionLifetime,
   options: NonNullable<HostBootServicesOptions['wifi']> = {},
 ): Promise<NetworkReadyResult> {
   const maxAttempts = options.maxAttempts ?? DEFAULT_BOOT_WIFI_MAX_ATTEMPTS
   const retryDelayMs = options.retryDelayMs ?? DEFAULT_BOOT_WIFI_RETRY_DELAY_MS
   for (;;) {
+    if (lifetime.closed) return { status: 'skipped', reason: 'host boot services closed' }
     let lastReason = 'connection failed'
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       options.onStatusChanged?.({
@@ -93,17 +111,23 @@ async function startStoredWiFi(
         maxAttempts,
         message: localize('splash.connecting', { attempt, maxAttempts }),
       })
-      const result = await connectStoredWiFiOnce()
+      const result = await connectStoredWiFiOnce(lifetime, options.attemptTimeoutMs ?? 20000)
+      if (lifetime.closed) return { status: 'skipped', reason: 'host boot services closed' }
       if (result.status !== 'failed') {
         return result
       }
       lastReason = result.reason
       trace(`[network] boot Wi-Fi attempt ${attempt}/${maxAttempts} failed: ${lastReason}\n`)
       if (shouldRetryBootWiFiAttempt(attempt, maxAttempts)) {
-        await wait(retryDelayMs)
+        await waitForRetry(lifetime, retryDelayMs)
+        if (lifetime.closed) return { status: 'skipped', reason: 'host boot services closed' }
       }
     }
 
+    if (options.retryInBackground) {
+      await waitForRetry(lifetime, retryDelayMs)
+      continue
+    }
     const message = bootWiFiFailureMessage(lastReason)
     if (!options.promptRecoveryChoice) {
       return { status: 'failed', reason: lastReason }
@@ -123,18 +147,34 @@ async function startStoredWiFi(
   }
 }
 
-function connectStoredWiFiOnce(): Promise<NetworkReadyResult> {
+function waitForRetry(lifetime: BootConnectionLifetime, milliseconds: number): Promise<void> {
+  return new Promise((resolve) => {
+    const finish = () => {
+      Timer.clear(timer)
+      lifetime.cancel = undefined
+      resolve()
+    }
+    const timer = Timer.set(finish, milliseconds)
+    lifetime.cancel = finish
+  })
+}
+
+function connectStoredWiFiOnce(lifetime: BootConnectionLifetime, timeoutMs: number): Promise<NetworkReadyResult> {
   return new Promise((resolve) => {
     let settled = false
     const finish = (result: NetworkReadyResult) => {
       if (settled) return
       settled = true
+      Timer.clear(timeout)
+      lifetime.cancel = undefined
       if (result.status !== 'connected') {
         stopStoredWiFiConnection()
       }
       resolve(result)
     }
 
+    const timeout = Timer.set(() => finish({ status: 'failed', reason: 'connection timeout' }), timeoutMs)
+    lifetime.cancel = () => finish({ status: 'skipped', reason: 'host boot services closed' })
     try {
       stopStoredWiFiConnection()
       const started = connectStoredWiFi({

@@ -1,4 +1,4 @@
-import { showStartupSplash, showWiFiRecoveryChoice } from 'startup-splash'
+import { showStartupFailure, showStartupSplash, showWiFiRecoveryChoice } from 'startup-splash'
 import { equal } from 'testing/assert'
 
 trace('=== startup-splash test ===\n')
@@ -75,5 +75,18 @@ const modsButton = selectionColumn.next.first
 modsButton.behavior.onTouchBegan(modsButton, 0, 0, 0)
 modsButton.behavior.onTouchEnded(modsButton)
 equal(modsCount, 1, 'startup view should expose the MOD manager as a touch action')
+
+const failureApplication = showStartupFailure({
+  message: 'Sensor unavailable',
+  onRetry() {
+    retryCount += 1
+  },
+})
+const failureColumn = failureApplication.first as unknown as typeof column
+equal(failureColumn.first.next.string, 'Startup failed: Sensor unavailable', 'startup failure should be visible')
+const restartButton = failureColumn.next.first
+restartButton.behavior.onTouchBegan(restartButton, 0, 0, 0)
+restartButton.behavior.onTouchEnded(restartButton)
+equal(retryCount, 2, 'startup failure should expose a working restart action')
 
 trace('ok\n')

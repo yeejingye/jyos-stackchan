@@ -130,3 +130,16 @@ export function showWiFiRecoveryChoice(options: WiFiRecoveryChoiceOptions): void
     ),
   ])
 }
+
+/** Replace an incomplete application with a visible, touch-accessible recovery screen. */
+export function showStartupFailure(options: { message: string; onRetry: () => void }): PiuApplication {
+  const application = showStartupSplash({ message: options.message })
+  setMessage(`Startup failed: ${options.message}`)
+  showActions([
+    new ActionButton(
+      { name: 'startup:retry', icon: 'retry', label: localize('splash.retry'), onTap: options.onRetry },
+      { left: 104, width: 112 },
+    ),
+  ])
+  return application
+}

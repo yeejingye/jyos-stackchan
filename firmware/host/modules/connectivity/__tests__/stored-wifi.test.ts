@@ -3,12 +3,20 @@ import { dirname, resolve } from 'node:path'
 import { test } from 'node:test'
 import { fileURLToPath } from 'node:url'
 
+import Timer from '../../testing/fakes/timer.js'
+
 import { writeAliasPackage, writeAliasPackageSubpath } from '../../testing/node-alias-package.js'
 
 type FakeNetworkManager = {
   completeLastConnection(): void
   failLastConnection(reason?: string): void
-  getStartedConnections(): Array<{ ssid: string; password: string; scanBeforeConnect?: boolean }>
+  getStartedConnections(): Array<{
+    ssid: string
+    password: string
+    scanBeforeConnect?: boolean
+    onConnected?: () => void
+    onError?: (reason?: string) => void
+  }>
   getStopCount(): number
   resetNetworkManager(): void
 }
@@ -62,6 +70,7 @@ function installBareSpecifierPackages(): void {
   writeAliasPackageSubpath(hostRoot, 'mc', 'config', resolve(modulesRoot, 'testing/fakes/mc-config.js'), {
     hasDefaultExport: true,
   })
+  writeAliasPackage(hostRoot, 'timer', resolve(modulesRoot, 'testing/fakes/timer.js'), { hasDefaultExport: true })
   writeAliasPackage(hostRoot, 'stored-wifi', resolve(modulesRoot, 'connectivity/stored-wifi.js'))
 }
 
@@ -82,6 +91,7 @@ async function setup(values: Record<string, unknown> = {}, configValues: Record<
   ;(globalThis as typeof globalThis & { trace: (...messages: unknown[]) => void }).trace = (...messages) => {
     traces.push(messages.map(String).join(''))
   }
+  Timer.reset()
   networkManager.resetNetworkManager()
   preference.resetPreference(values)
   mcConfig.resetConfig(configValues)
@@ -212,4 +222,74 @@ test('startHostBootServices exposes failed network readiness with a traceable re
     reason: 'authentication failed',
   })
   assert.ok(traces.includes('[network] connection failed: authentication failed\n'))
+})
+
+async function flushContinuations() {
+  for (let i = 0; i < 5; i += 1) await Promise.resolve()
+}
+
+test('background boot retries a hung scan and ignores late callbacks after Wi-Fi returns', async () => {
+  const { networkManager } = await setup({ 'wifi.ssid': 'boot-ap', 'wifi.password': 'secret' })
+  const { startHostBootServices } = await import('../../../app/boot-services.js')
+  const services = startHostBootServices({
+    wifi: {
+      retryInBackground: true,
+      maxAttempts: 1,
+      retryDelayMs: 100,
+      attemptTimeoutMs: 200,
+    },
+  })
+  const stale = networkManager.getStartedConnections()[0]
+  let ready = false
+  void services.connectivity.network.ready.then(() => {
+    ready = true
+  })
+  Timer.advance(200)
+  await flushContinuations()
+  assert.equal(ready, false)
+  Timer.advance(100)
+  await flushContinuations()
+  assert.equal(networkManager.getStartedConnections().length, 2)
+  stale.onConnected?.()
+  stale.onError?.('late failure')
+  await flushContinuations()
+  assert.equal(ready, false)
+  networkManager.completeLastConnection()
+  assert.deepEqual(await services.connectivity.network.ready, { status: 'connected' })
+  services.close()
+})
+
+for (const duringBackoff of [false, true]) {
+  test(`closing boot services cancels ${duringBackoff ? 'retry backoff' : 'a pending scan'}`, async () => {
+    const { networkManager } = await setup({ 'wifi.ssid': 'boot-ap', 'wifi.password': 'secret' })
+    const { startHostBootServices } = await import('../../../app/boot-services.js')
+    const services = startHostBootServices({ wifi: { retryInBackground: true, maxAttempts: 1 } })
+    if (duringBackoff) {
+      networkManager.failLastConnection()
+      await flushContinuations()
+    }
+    services.close()
+    services.close()
+    assert.deepEqual(await services.connectivity.network.ready, {
+      status: 'skipped',
+      reason: 'host boot services closed',
+    })
+    Timer.advance(60000)
+    await flushContinuations()
+    assert.equal(networkManager.getStartedConnections().length, 1)
+  })
+}
+
+test('background boot without credentials settles offline instead of retrying endlessly', async () => {
+  const { networkManager } = await setup()
+  const { startHostBootServices } = await import('../../../app/boot-services.js')
+  const services = startHostBootServices({ wifi: { retryInBackground: true } })
+  assert.deepEqual(await services.connectivity.network.ready, {
+    status: 'skipped',
+    reason: 'missing Wi-Fi credentials',
+  })
+  Timer.advance(60000)
+  await flushContinuations()
+  assert.equal(networkManager.getStartedConnections().length, 0)
+  services.close()
 })

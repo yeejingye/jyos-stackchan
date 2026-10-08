@@ -81,6 +81,7 @@ export class NetworkService {
   }
 
   close() {
+    if (this.#closed) return
     this.#closed = true
     this.#clearConnectionTimeout()
     this.#clearReconnectTimer()
@@ -119,13 +120,14 @@ export class NetworkService {
     let found = false
     this.#wifi.scan({
       onFound: (item: { ssid?: string; SSID?: string }) => {
+        if (this.#closed) return
         const ssid = item.ssid ?? item.SSID
         if (ssid !== this.#ssid || found) return
         found = true
         this.connect(onConnected, onError)
       },
       onComplete: () => {
-        if (found) return
+        if (found || this.#closed) return
         const state = this.#transition({ type: 'scan-finished' })
         if (state === NetworkConnectionState.FAILED) {
           const message = `Access point "${this.#ssid}" not found`
@@ -140,6 +142,7 @@ export class NetworkService {
   }
 
   #handleWiFiChanged(_property: string): void {
+    if (this.#closed) return
     const connection = this.#wifi.connection
     trace(`WiFi ${connection}\n`)
     if (connection >= 500) {
@@ -177,6 +180,7 @@ export class NetworkService {
     this.#transition({ type: 'time-sync-started' })
     this.#startConnectionTimeout()
     new SNTP({ host: sntpHost }, (message, value) => {
+      if (this.#closed) return
       if (SNTP.time === message) {
         trace(`Got time from: ${sntpHost}\n`)
         if (typeof value === 'number') {

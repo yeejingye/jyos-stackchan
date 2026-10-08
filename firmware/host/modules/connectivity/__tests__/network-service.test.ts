@@ -115,3 +115,31 @@ test('NetworkService scanAndConnect reports scan exhaustion when the target acce
   assert.equal(getFakeWiFiInstances()[0]?.connectOptions, undefined)
   service.close()
 })
+
+test('closing a scanning service prevents late scan and IP callbacks from reviving it', async () => {
+  const { NetworkService, timer } = await setup()
+  const service = new NetworkService({ ssid: 'stackchan-ap', password: 'secret' })
+  const wifi = getFakeWiFiInstances()[0]
+  let scanCallbacks: Parameters<typeof wifi.scan>[0]
+  wifi.scan = (options) => {
+    scanCallbacks = options
+  }
+  let notifications = 0
+  service.scanAndConnect(
+    () => {
+      notifications += 1
+    },
+    () => {
+      notifications += 1
+    },
+  )
+  service.close()
+  service.close()
+  scanCallbacks?.onFound?.({ ssid: 'stackchan-ap' })
+  scanCallbacks?.onComplete?.()
+  wifi.emitGotIP()
+  timer.advance(60000)
+  assert.equal(wifi.connectOptions, undefined)
+  assert.equal(notifications, 0)
+  assert.equal(wifi.disconnectCount, 1)
+})

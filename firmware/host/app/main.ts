@@ -3,7 +3,7 @@ import { runContextCreatedBehaviors, type StackchanAppBehavior } from 'app-behav
 import { resolveAppBehaviors } from 'app-behavior-resolver'
 import defaultBehavior from 'app-default-behavior'
 import { installLaunchShortcut, type LaunchShortcutButton, prepareAppLaunch } from 'app-launch'
-import { type BootWiFiStatus, startHostBootServices } from 'boot-services'
+import { type HostBootServices, startHostBootServices } from 'boot-services'
 import type { StackchanContext } from 'capabilities'
 import { createStackchanContext, getHostDeviceEnvironment } from 'compose'
 import { DOMAIN } from 'consts'
@@ -11,22 +11,17 @@ import { type StackchanDockRuntime, startStackchanDock } from 'dock'
 import { prepareExperimentalMiniApps, registerExperimentalMiniApps } from 'experimental-mini-app-loader'
 import { initializeLocalization } from 'localization'
 import Modules from 'modules'
-import { showStartupSplash, showWiFiConnectionStatus, showWiFiRecoveryChoice } from 'startup-splash'
+import { showStartupFailure, showStartupSplash } from 'startup-splash'
 import Timer from 'timer'
 import { applyTimezone } from 'timezone-settings'
 
-type DeviceButton = {
-  onChanged: (this: DeviceButton) => void
-}
-
 type GlobalEnvironment = {
   application?: ReturnType<typeof showStartupSplash>
-  button?: Partial<Record<'a' | 'c', DeviceButton>> & { power?: LaunchShortcutButton }
+  button?: { power?: LaunchShortcutButton }
   System: { restart(): void }
 }
 
 const globalEnv = globalThis as typeof globalThis & GlobalEnvironment
-const noopButtonHandler = () => undefined
 
 function installPlatformInputBridge(): void {
   if (!Modules.has('wasm-button-bridge')) return
@@ -58,46 +53,11 @@ function installModManagerShortcut(): void {
   })
 }
 
-function waitForBootWiFiRecoveryChoice(status: BootWiFiStatus & { reason: string }): Promise<'retry' | 'offline'> {
-  return new Promise((resolve) => {
-    let resolved = false
-    const previousAHandler = globalEnv.button?.a?.onChanged
-    const previousCHandler = globalEnv.button?.c?.onChanged
-
-    const restoreButtons = () => {
-      if (globalEnv.button?.a) {
-        globalEnv.button.a.onChanged = previousAHandler ?? noopButtonHandler
-      }
-      if (globalEnv.button?.c) {
-        globalEnv.button.c.onChanged = previousCHandler ?? noopButtonHandler
-      }
-    }
-    const choose = (choice: 'retry' | 'offline') => {
-      if (resolved) return
-      resolved = true
-      restoreButtons()
-      resolve(choice)
-    }
-
-    trace(`[network] ${status.message}: ${status.reason}\n`)
-    showWiFiRecoveryChoice({
-      message: status.message,
-      onRetry: () => choose('retry'),
-      onOffline: () => choose('offline'),
-    })
-    if (globalEnv.button?.a) {
-      globalEnv.button.a.onChanged = () => choose('retry')
-    }
-    if (globalEnv.button?.c) {
-      globalEnv.button.c.onChanged = () => choose('offline')
-    }
-  })
-}
-
 async function main() {
   trace('[main] start\n')
   let dockRuntime: StackchanDockRuntime | undefined
   let context: StackchanContext | undefined
+  let bootServices: HostBootServices | undefined
   try {
     dockRuntime = startStackchanDock(Modules, loadModConfig())
     if (dockRuntime) trace('[main] Stackchan Dock started\n')
@@ -109,8 +69,7 @@ async function main() {
 
     trace('[main] loading app behaviors\n')
     const appBehaviors = loadAppBehaviors()
-    // Launch behaviors run before startHostBootServices so the splash screen is
-    // visible while network setup blocks.
+    // Keep the startup settings/MOD selection available before starting services.
     const launch = await prepareAppLaunch(appBehaviors, prepareExperimentalMiniApps)
     trace(`[main] onLaunch shouldCreateContext=${launch.shouldCreateContext}\n`)
     if (!launch.shouldCreateContext) {
@@ -122,20 +81,18 @@ async function main() {
     }
     const experimentalMiniApps = launch.prepared
 
-    const bootServices = startHostBootServices({
-      wifi: {
-        onStatusChanged: showWiFiConnectionStatus,
-        promptRecoveryChoice: waitForBootWiFiRecoveryChoice,
-      },
+    // Network readiness belongs to online consumers, not local UI/input startup.
+    bootServices = startHostBootServices({ wifi: { retryInBackground: true, retryDelayMs: 5000 } })
+    void bootServices.connectivity.network.ready.then((result) => {
+      trace(`[main] network ready: ${result.status}\n`)
     })
-    const networkReady = await bootServices.connectivity.network.ready
-    trace(`[main] network ready: ${networkReady.status}\n`)
     const preferences = loadPreferenceConfig()
     const ownedDock = dockRuntime
+    const ownedBootServices = bootServices
     context = createStackchanContext(preferences, {
       connectivity: bootServices.connectivity,
       remoteConversationSession: ownedDock?.remoteConversationSession,
-      closeHandlers: ownedDock ? [() => ownedDock.close()] : undefined,
+      closeHandlers: [() => ownedBootServices.close(), ...(ownedDock ? [() => ownedDock.close()] : [])],
     })
     ownedDock?.onContextCreated(context)
     registerExperimentalMiniApps(experimentalMiniApps, context.ui.miniApps)
@@ -147,6 +104,7 @@ async function main() {
     trace('[main] app behaviors ready\n')
     installModManagerShortcut()
   } catch (error) {
+    bootServices?.close()
     try {
       if (context) await context.lifecycle.close()
       else dockRuntime?.close()
@@ -160,4 +118,8 @@ async function main() {
 
 main().catch((error) => {
   trace(`[main] error ${error?.message ?? error}\n`)
+  globalEnv.application = showStartupFailure({
+    message: String(error?.message ?? error),
+    onRetry: () => globalEnv.System.restart(),
+  })
 })
