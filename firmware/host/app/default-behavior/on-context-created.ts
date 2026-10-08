@@ -3,6 +3,7 @@ import { DigitalFace, DogFace, ImageFace, SimpleFace } from 'behaviors/face'
 import type { CameraImageType } from 'camera'
 import { type CameraPreviewFrame, createCameraPreviewDialog, prepareCameraPreviewFrame } from 'camera-preview'
 import { Emoticon, type EmoticonKey } from 'effects/emoticon'
+import { installFaceFollowingMode, isFaceFollowing, stopFaceFollowing } from 'face-following'
 import { Emotion } from 'face-state'
 import { type HandAnimationName, isHandAnimationName } from 'hands'
 import type { MotionType } from 'imu'
@@ -148,6 +149,7 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
     }
   }
   const runPettingRestoreMotion = async (rotation: typeof robot.pose.body.rotation) => {
+    pettingMotionActive = true
     try {
       await robot.setPose(poseForRotation(rotation), TOUCH_PANEL_PET_MOTION_STEP_SEC)
     } catch (error) {
@@ -293,7 +295,11 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
   })
   syncHandAnimation()
 
+  let cameraPreviewBusy = false
   const runCameraPreview = async (target: typeof robot) => {
+    if (cameraPreviewBusy) return
+    cameraPreviewBusy = true
+    await stopFaceFollowing(robot)
     let frame: Awaited<ReturnType<typeof target.camera.capture>> | undefined
     let previewFrame: CameraPreviewFrame | undefined
     const stopCameraAfterPreviewPaint = () =>
@@ -371,6 +377,7 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
         trace('[CameraPreview] frame close done\n')
       }
       await stopCameraAfterPreviewPaint()
+      cameraPreviewBusy = false
       hideBalloonLater(1200)
     }
   }
@@ -387,7 +394,11 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
    * Look around (Drawer toggle)
    */
   let isFollowing = false
+  let lookAroundBusy = false
   const toggleLookAround = async () => {
+    if (lookAroundBusy) return
+    lookAroundBusy = true
+    await stopFaceFollowing(robot)
     const nextFollowing = !isFollowing
     try {
       await robot.setTorque(nextFollowing)
@@ -400,9 +411,12 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
     } catch (error) {
       trace(`[Look] toggle error ${errorMessage(error)}\n`)
       robot.drawer.setDrawerButtonState('toggleLookAround', isFollowing)
+    } finally {
+      lookAroundBusy = false
     }
   }
   const targetLoop = () => {
+    if (isFaceFollowing(robot)) return
     if (!isFollowing) {
       robot.lookAway()
       return
@@ -429,6 +443,7 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
   const runServoTest = async () => {
     if (isMoving) return
     isMoving = true
+    await stopFaceFollowing(robot)
     let failed = false
     const rotations = [LEFT, RIGHT, DOWN, UP, FORWARD]
     try {
@@ -471,6 +486,18 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
     label: localize('drawer.servo'),
     icon: 'play',
     callback: startServoTest,
+  })
+
+  installFaceFollowingMode(robot, {
+    onStart: () => {
+      isFollowing = false
+      robot.drawer.setDrawerButtonState('toggleLookAround', false)
+      if (cameraPreviewTimer) {
+        Timer.clear(cameraPreviewTimer)
+        cameraPreviewTimer = undefined
+      }
+    },
+    canStart: () => !cameraPreviewBusy && !isMoving && !lookAroundBusy && !pettingMotionActive && !pettingRestoreTimer,
   })
 
   /**
@@ -657,6 +684,7 @@ export const onContextCreated: NonNullable<StackchanAppBehavior['onContextCreate
     let lastForwardSwipeTicks: number | undefined
     let lastBackwardSwipeTicks: number | undefined
     robot.touchPanel.subscribe((event) => {
+      if (isFaceFollowing(robot)) return
       const type = event.gesture
       trace(`[TouchPanel] gesture: ${type}\n`)
       if (type !== 'forwardSwipe' && type !== 'backwardSwipe') return

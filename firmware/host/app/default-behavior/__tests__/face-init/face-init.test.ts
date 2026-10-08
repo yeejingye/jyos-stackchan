@@ -1,8 +1,17 @@
 import { onContextCreated } from 'app-default-behavior/on-context-created'
+import { installFaceFollowingMode, isFaceFollowing, startFaceFollowing, stopFaceFollowing } from 'face-following'
+import { createFaceFollowingSweepProfiles } from 'face-following-controller'
 import { Emotion } from 'face-state'
+import { resetModules } from 'modules'
+import type { Container as PiuContainer } from 'piu/MC'
 import { assert, equal } from 'testing/assert'
 
 trace('=== default-mod face init test ===\n')
+equal(
+  JSON.parse(JSON.stringify(createFaceFollowingSweepProfiles()[0])).name,
+  'baseline',
+  'preloaded controller creates serializable runtime profiles',
+)
 
 type RegisteredButton = {
   key?: string
@@ -213,9 +222,76 @@ async function testServoRecovery() {
   }
 }
 
+async function testFaceFollowingControls() {
+  let stopButton: PiuContainer | undefined
+  let added = 0
+  let removed = 0
+  let showFaceCount = 0
+  resetModules({ 'local-face-detector': class {} })
+  const followingRobot = {
+    ...robot,
+    camera: { available: true },
+    ui: {
+      ...robot.ui,
+      showFace: () => {
+        showFaceCount++
+      },
+      addEffect: (effect: PiuContainer) => {
+        stopButton = effect
+        added++
+      },
+      removeEffect: (effect: PiuContainer) => {
+        equal(effect, stopButton, 'stop should remove its own button')
+        removed++
+      },
+    },
+  }
+  onContextCreated?.(followingRobot as never, { config: {} } as never)
+  const followButton = buttons.find((button) => button.key === 'followMyFace')
+  assert(followButton, 'supported camera hosts should expose face following')
+  equal(followButton.label, 'Follow my Face', 'menu should use the requested label')
+  equal(added, 0, 'stop button must be absent outside the mode')
+  followButton.callback?.(followingRobot)
+  assert(isFaceFollowing(followingRobot), 'drawer should start the shared controller')
+  equal(added, 1, 'start should show one stop overlay')
+  equal(showFaceCount, 1, 'start should restore the face')
+  assert(stopButton, 'stop button should exist')
+  const behavior = stopButton.behavior as { onTouchEnded(container: PiuContainer): void }
+  behavior.onTouchEnded(stopButton)
+  await stopFaceFollowing(followingRobot)
+  assert(!isFaceFollowing(followingRobot), 'stop icon should stop the shared controller')
+  equal(removed, 1, 'stop should remove the overlay')
+  startFaceFollowing(followingRobot)
+  await stopFaceFollowing(followingRobot)
+  equal(added, 2, 'external triggers should use the same overlay lifecycle')
+  equal(removed, 2, 'external stop should remove the same overlay')
+  const buttonsBeforeHostInstall = buttons.length
+  installFaceFollowingMode(followingRobot as never)
+  equal(buttons.length, buttonsBeforeHostInstall, 'host install must not duplicate a default-behavior menu')
+  const modButtons: RegisteredButton[] = []
+  const modRobot = {
+    ...followingRobot,
+    drawer: {
+      addDrawerButton: (button: RegisteredButton) => {
+        modButtons.push(button)
+      },
+    },
+  }
+  // A MOD may replace onContextCreated entirely. Host installation must work without that hook.
+  installFaceFollowingMode(modRobot as never)
+  equal(modButtons.length, 1, 'MOD contexts should receive the host-owned face following action')
+  equal(modButtons[0].key, 'followMyFace', 'MOD menu should expose the same action')
+  modButtons[0].callback?.(modRobot)
+  assert(isFaceFollowing(modRobot), 'MOD menu should start tracking')
+  await stopFaceFollowing(modRobot)
+  assert(!isFaceFollowing(modRobot), 'MOD tracking should stop through the shared entry point')
+  resetModules()
+}
+
 async function runAsyncTests() {
   await testSpeakStackchan()
   await testServoRecovery()
+  await testFaceFollowingControls()
   trace('ok\n')
 }
 

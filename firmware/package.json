@@ -96,7 +96,8 @@
     "test:pomodoro": "node --test mods/pomodoro/*.test.mjs",
     "voice:prepare": "node scripts/prepare-voice-models.mjs",
     "build:joy-voice": "node scripts/firmware.mjs build m5stackchan_cores3 --mode=release --manifest host/app/manifest_m5stackchan_cores3_joy_voice.json",
-    "flash:joy-voice": "node scripts/firmware.mjs deploy m5stackchan_cores3 --mode=release --manifest host/app/manifest_m5stackchan_cores3_joy_voice.json"
+    "flash:joy-voice": "node scripts/firmware.mjs deploy m5stackchan_cores3 --mode=release --manifest host/app/manifest_m5stackchan_cores3_joy_voice.json",
+    "test:face-init:build": "node scripts/run-mcconfig.mjs -d -m -p mac -t build host/app/default-behavior/__tests__/face-init/manifest.test.json"
   },
   "type": "module",
   "repository": {

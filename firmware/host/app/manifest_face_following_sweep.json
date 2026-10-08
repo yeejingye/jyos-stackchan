@@ -1,0 +1,4 @@
+{
+  "include": ["./manifest_m5stackchan_cores3.json"],
+  "config": { "faceFollowing": { "sweep": true } }
+}

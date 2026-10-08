@@ -1,6 +1,6 @@
 # Experimental local face detector
 
-CoreS3-only Moddable host binding for Espressif `human_face_detect` 0.5.0 and ESP-DL 3.3.13. The default MSR/MNP model is embedded in flash; no camera frames leave the robot. This detects face location, not identity. It is enabled only by `host/app/manifest_m5stackchan_cores3_local_completion.json`.
+CoreS3-only Moddable host binding for Espressif `human_face_detect` 0.5.0 and ESP-DL 3.3.13. The default MSR/MNP model is embedded in flash; no camera frames leave the robot. This detects face location, not identity. It is included in the default M5StackChan CoreS3 host for the Follow my Face mode and research companion.
 
 ```js
 const FaceDetector = Modules.importNow('local-face-detector')

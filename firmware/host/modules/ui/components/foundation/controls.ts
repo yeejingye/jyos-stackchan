@@ -17,6 +17,7 @@ export type IconName =
   | 'play'
   | 'retry'
   | 'scan'
+  | 'stop'
   | 'settings'
   | 'volume'
   | 'wifi'
@@ -123,6 +124,9 @@ function drawIcon(port: PiuPort, icon: IconName, color: string) {
         [cx - 4, cy + 2],
         [cx - 7, cy + 5],
       ])
+      return
+    case 'stop':
+      port.fillColor(color, cx - 7, cy - 7, 14, 14)
       return
     case 'play':
       for (let row = -7; row <= 7; row += 2) {
