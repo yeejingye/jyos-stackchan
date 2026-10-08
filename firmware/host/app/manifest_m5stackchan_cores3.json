@@ -2,7 +2,8 @@
   "include": [
     "./manifest.json",
     "./docks/android-usb-audio/manifest.json",
-    "../modules/usb-audio/manifest.json"
+    "../modules/usb-audio/manifest.json",
+    "../modules/local-face-detector/manifest.json"
   ],
   "modules": {
     "mod-installer": "./mod-installer",

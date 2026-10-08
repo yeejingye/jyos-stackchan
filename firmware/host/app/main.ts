@@ -9,6 +9,7 @@ import { createStackchanContext, getHostDeviceEnvironment } from 'compose'
 import { DOMAIN } from 'consts'
 import { type StackchanDockRuntime, startStackchanDock } from 'dock'
 import { prepareExperimentalMiniApps, registerExperimentalMiniApps } from 'experimental-mini-app-loader'
+import { installFaceFollowingMode } from 'face-following'
 import { initializeLocalization } from 'localization'
 import Modules from 'modules'
 import { showStartupFailure, showStartupSplash } from 'startup-splash'
@@ -101,6 +102,8 @@ async function main() {
       device: getHostDeviceEnvironment(),
       config: preferences,
     })
+    // Product modes must survive a MOD replacing the default onContextCreated hook.
+    installFaceFollowingMode(context)
     trace('[main] app behaviors ready\n')
     installModManagerShortcut()
   } catch (error) {

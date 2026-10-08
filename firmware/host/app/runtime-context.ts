@@ -15,6 +15,7 @@ import type {
   ShowBalloonOptions,
   StackchanContext,
 } from 'capabilities'
+import { stopFaceFollowing } from 'face-following-controller'
 import type { Emotion, FaceEyeKey, FaceThemeKey } from 'face-state'
 import { LocalPeerError, type LocalPeerSession } from 'local-peer-types'
 import { createI18nCapability } from 'localization'
@@ -652,6 +653,11 @@ export class StackchanRuntimeContext implements StackchanContext {
       if (hasCloseError) return
       closeError = error
       hasCloseError = true
+    }
+    try {
+      await stopFaceFollowing(this)
+    } catch (error) {
+      rememberCloseError(error)
     }
     try {
       this.#motionController.close()

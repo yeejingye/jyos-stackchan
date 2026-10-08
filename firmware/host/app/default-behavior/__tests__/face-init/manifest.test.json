@@ -7,10 +7,15 @@
   "resources": {
     "*": ["../../../strings/*"]
   },
+  "preload": ["face-following-controller"],
   "modules": {
     "app-behavior": "./app-behavior-stub",
     "app-default-behavior/on-context-created": "../../on-context-created",
     "imu": "./imu-stub",
-    "main": "./face-init.test"
+    "modules": "../../../../modules/testing/fakes/modules",
+    "main": "./face-init.test",
+    "face-following": "../../../face-following",
+    "face-following-controller": "../../../face-following-controller",
+    "face-following-detector": "../../../face-following-detector"
   }
 }

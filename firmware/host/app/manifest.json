@@ -49,7 +49,10 @@
       "./runtime-lighting",
       "./runtime-ui",
       "./owned-resources",
-      "$(MODULES)/network/http/*"
+      "$(MODULES)/network/http/*",
+      "./face-following",
+      "./face-following-controller",
+      "./face-following-detector"
     ],
     "startup-splash": "../modules/ui/views/splash/splash-view",
     "camera-preview": "../modules/ui/views/camera-preview/camera-preview-view",
